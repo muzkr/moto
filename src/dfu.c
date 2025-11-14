@@ -142,7 +142,7 @@ static_assert(0 == FIRMWARE_UF2_SIZE % 512);
 #define FIRMWARE_UF2_FAT_ENTRY_LAST DATA_SECTOR_TO_FAT_ENTRY(FIRMWARE_UF2_SECTOR + FIRMWARE_UF2_SECTOR_NUM)
 
 static fat_dir_entry_t FIRMWARE_UF2_dir_entry = {
-    .name = "FIRMWAREUF2",
+    .name = "CURRENT UF2",
     .attr = FAT_DIR_ATTR_RO,
     .first_clusterLO = DATA_SECTOR_TO_FAT_ENTRY(FIRMWARE_UF2_SECTOR),
     .file_size = FIRMWARE_UF2_SIZE,
