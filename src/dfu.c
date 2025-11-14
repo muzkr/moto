@@ -45,13 +45,17 @@ static_assert(0 == FLASH_FW_ADDR % FLASH_PAGE_SIZE);
 
 #define VOLUME_LABEL_ROOT_ENTRY 0
 #define MOTO_INFO_ROOT_ENTRY 1
-#define FIRMWARE_UF2_ROOT_ENTRY 2
+#define UF2_INFO_ROOT_ENTRY 2
+#define FIRMWARE_UF2_ROOT_ENTRY 3
 
 // Data sectors assign -----
 
 #define MOTO_INFO_SECTOR 0              // Data sector of MOTO.TXT
-#define FIRMWARE_UF2_SECTOR 1           // First data sector of FIRMWARE.UF2
+#define UF2_INFO_SECTOR 1               // Data sector of INFO_UF2.TXT
+#define FIRMWARE_UF2_SECTOR 2           // First data sector of FIRMWARE.UF2
 #define FIRMWARE_UF2_SECTOR_NUM_MAX 472 // Max number of data sectors of FIRMWARE.UF2
+
+// ------------
 
 static const fat_boot_sector_t BOOT_SECTOR_RECORD = {
     .jump_boot = {0xeb, 0, 0},
@@ -82,9 +86,12 @@ static const fat_dir_entry_t VOLUME_LABEL_DIR_ENTRY = {
     .write_time = _VOLUME_CREATE_TIME,
 };
 
-static const char MOTO_INFO_CONTENT[] = "Mode: DFU\n"                              //
-                                        "Version: " VERSION "\n"                   //
-                                        "Support: https://github.com/muzkr/moto\n" //
+// ---------
+
+static const char MOTO_INFO_CONTENT[] = "Moto Bootloader\r\n"                        //
+                                        "Mode: DFU\r\n"                              //
+                                        "Version: " VERSION "\r\n"                   //
+                                        "Support: https://github.com/muzkr/moto\r\n" //
     ;
 
 #define MOTOR_INFO_CONTENT_SIZE (sizeof(MOTO_INFO_CONTENT) - 1)
@@ -96,6 +103,28 @@ static const fat_dir_entry_t MOTO_INFO_DIR_ENTRY = {
     .attr = FAT_DIR_ATTR_RO,
     .first_clusterLO = DATA_SECTOR_TO_FAT_ENTRY(MOTO_INFO_SECTOR),
     .file_size = MOTOR_INFO_CONTENT_SIZE,
+    .create_date = _VOLUME_CREATE_DATE,
+    .create_time = _VOLUME_CREATE_TIME,
+    .write_date = _VOLUME_CREATE_DATE,
+    .write_time = _VOLUME_CREATE_TIME,
+};
+
+// ---------
+
+static const char UF2_INFO_CONTENT[] = "UF2 Bootloader Moto-" VERSION "\r\n" //
+                                       "Model: Moto Bootloader\r\n"          //
+                                       "Board-ID: UV-K5-V3-variants\r\n"     //
+    ;
+
+#define UF2_INFO_CONTENT_SIZE (sizeof(UF2_INFO_CONTENT) - 1)
+
+static_assert(UF2_INFO_CONTENT_SIZE <= SECTOR_SIZE);
+
+static const fat_dir_entry_t UF2_INFO_DIR_ENTRY = {
+    .name = "INFO_UF2TXT",
+    .attr = FAT_DIR_ATTR_RO,
+    .first_clusterLO = DATA_SECTOR_TO_FAT_ENTRY(UF2_INFO_SECTOR),
+    .file_size = UF2_INFO_CONTENT_SIZE,
     .create_date = _VOLUME_CREATE_DATE,
     .create_time = _VOLUME_CREATE_TIME,
     .write_date = _VOLUME_CREATE_DATE,
@@ -166,8 +195,10 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             buf[2] = 0xff;
             buf[3] = 0xff;
 
-            // Moto info : known entry 2
+            // Moto info: known entry 2
             fat_set_word(buf + 4, FAT16_ENTRY_EOF);
+            // INFO_UF2.TXT: known entry 3
+            fat_set_word(buf + 6, FAT16_ENTRY_EOF);
         }
 
         // FIRMWARE.UF2
@@ -219,7 +250,8 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             memcpy(buf + FAT_DIR_ENTRY_SIZE * VOLUME_LABEL_ROOT_ENTRY, &VOLUME_LABEL_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
             // Moto info
             memcpy(buf + FAT_DIR_ENTRY_SIZE * MOTO_INFO_ROOT_ENTRY, &MOTO_INFO_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
-
+            // INFO_UF2.TXT
+            memcpy(buf + FAT_DIR_ENTRY_SIZE * UF2_INFO_ROOT_ENTRY, &UF2_INFO_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
             // FIRMWARE.UF2
             memcpy(buf + FAT_DIR_ENTRY_SIZE * FIRMWARE_UF2_ROOT_ENTRY, &FIRMWARE_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
         }
@@ -234,6 +266,12 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
         if (MOTO_INFO_SECTOR == sector)
         {
             memcpy(buf, MOTO_INFO_CONTENT, MOTOR_INFO_CONTENT_SIZE);
+        }
+
+        // INFO_UF2.TXT
+        if (UF2_INFO_SECTOR == sector)
+        {
+            memcpy(buf, UF2_INFO_CONTENT, UF2_INFO_CONTENT_SIZE);
         }
 
         // FIRMWARE.UF2
