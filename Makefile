@@ -34,15 +34,15 @@ src/usbd_msc_impl.c \
 src/dfu.c \
 src/py32f071_it.c \
 src/system_py32f071.c \
-Middlewares/CherryUSB/core/usbd_core.c \
-Middlewares/CherryUSB/port/usb_dc_py32.c \
-Middlewares/CherryUSB/class/msc/usbd_msc.c \
-Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_dma.c \
-Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_gpio.c \
-Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_rcc.c \
-Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_pwr.c \
-Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_usart.c \
-Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_utils.c
+lib/Middlewares/CherryUSB/core/usbd_core.c \
+lib/Middlewares/CherryUSB/port/usb_dc_py32.c \
+lib/Middlewares/CherryUSB/class/msc/usbd_msc.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_dma.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_gpio.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_rcc.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_pwr.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_usart.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_utils.c
 
 
 # ASM sources
@@ -95,23 +95,23 @@ AS_INCLUDES =
 # C includes
 C_INCLUDES = \
 -Isrc \
--IDrivers/PY32F071_HAL_Driver/Inc \
--IDrivers/CMSIS/Device/PY32F071/Include \
--IDrivers/CMSIS/Include \
--IMiddlewares/CherryUSB/port \
--IMiddlewares/CherryUSB/core \
--IMiddlewares/CherryUSB/common \
--IMiddlewares/CherryUSB/class/msc
+-Ilib/Drivers/PY32F071_HAL_Driver/Inc \
+-Ilib/Drivers/CMSIS/Device/PY32F071/Include \
+-Ilib/Drivers/CMSIS/Include \
+-Ilib/Middlewares/CherryUSB/port \
+-Ilib/Middlewares/CherryUSB/core \
+-Ilib/Middlewares/CherryUSB/common \
+-Ilib/Middlewares/CherryUSB/class/msc
 
 
 ifeq ($(ENABLE_LOGGING),1)
 C_SOURCES += \
 	src/log.c \
-	Utilities/printf/printf.c \
-	Utilities/lwrb-3.2.0/lwrb/src/lwrb/lwrb.c
+	lib/Utilities/printf/printf.c \
+	lib/Utilities/lwrb-3.2.0/lwrb/src/lwrb/lwrb.c
 C_INCLUDES += \
-	-IUtilities/printf \
-	-IUtilities/lwrb-3.2.0/lwrb/src/include
+	-Ilib/Utilities/printf \
+	-Ilib/Utilities/lwrb-3.2.0/lwrb/src/include
 C_DEFS += -DENABLE_LOGGING
 endif
 
