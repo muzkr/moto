@@ -41,19 +41,23 @@ static_assert(0 == FLASH_FW_ADDR % FLASH_PAGE_SIZE);
 #define VOLUME_LABEL "MOTO       "
 #define BPB_MEDIA 0xf0
 
+#define MOTO_URL "https://github.com/muzkr/moto"
+
 // Root entry assign ------
 
 #define VOLUME_LABEL_ROOT_ENTRY 0
 #define MOTO_INFO_ROOT_ENTRY 1
 #define UF2_INFO_ROOT_ENTRY 2
-#define FIRMWARE_UF2_ROOT_ENTRY 3
+#define INDEX_HTM_ROOT_ENTRY 3
+#define CURRENT_UF2_ROOT_ENTRY 4
 
 // Data sectors assign -----
 
-#define MOTO_INFO_SECTOR 0              // Data sector of MOTO.TXT
-#define UF2_INFO_SECTOR 1               // Data sector of INFO_UF2.TXT
-#define FIRMWARE_UF2_SECTOR 2           // First data sector of FIRMWARE.UF2
-#define FIRMWARE_UF2_SECTOR_NUM_MAX 472 // Max number of data sectors of FIRMWARE.UF2
+#define MOTO_INFO_SECTOR 0             // Data sector of MOTO.TXT
+#define UF2_INFO_SECTOR 1              // Data sector of INFO_UF2.TXT
+#define INDEX_HTM_SECTOR 2             // First data sector of INDEX.HTM
+#define CURRENT_UF2_SECTOR 3           // First data sector of CURRENT.UF2
+#define CURRENT_UF2_SECTOR_NUM_MAX 472 // Max number of data sectors of CURRENT.UF2
 
 // ------------
 
@@ -88,10 +92,11 @@ static const fat_dir_entry_t VOLUME_LABEL_DIR_ENTRY = {
 
 // ---------
 
-static const char MOTO_INFO_CONTENT[] = "Moto Bootloader\r\n"                        //
-                                        "Mode: DFU\r\n"                              //
-                                        "Version: " VERSION "\r\n"                   //
-                                        "Support: https://github.com/muzkr/moto\r\n" //
+static const char MOTO_INFO_CONTENT[] = //
+    "Moto Bootloader\r\n"               //
+    "Mode: DFU\r\n"                     //
+    "Version: " MOTO_VERSION "\r\n"     //
+    "Support: " MOTO_URL "\r\n"         //
     ;
 
 #define MOTOR_INFO_CONTENT_SIZE (sizeof(MOTO_INFO_CONTENT) - 1)
@@ -111,9 +116,10 @@ static const fat_dir_entry_t MOTO_INFO_DIR_ENTRY = {
 
 // ---------
 
-static const char UF2_INFO_CONTENT[] = "UF2 Bootloader Moto-" VERSION "\r\n" //
-                                       "Model: Moto Bootloader\r\n"          //
-                                       "Board-ID: UV-K5-V3-variants\r\n"     //
+static const char UF2_INFO_CONTENT[] =         //
+    "UF2 Bootloader Moto-" MOTO_VERSION "\r\n" //
+    "Model: Moto Bootloader\r\n"               //
+    "Board-ID: UV-K5-V3-variants\r\n"          //
     ;
 
 #define UF2_INFO_CONTENT_SIZE (sizeof(UF2_INFO_CONTENT) - 1)
@@ -131,21 +137,49 @@ static const fat_dir_entry_t UF2_INFO_DIR_ENTRY = {
     .write_time = _VOLUME_CREATE_TIME,
 };
 
-// FIRMWARE.UF2 ------
+// ---------
 
-#define FIRMWARE_UF2_SIZE (FLASH_FW_SIZE * 2)
-#define FIRMWARE_UF2_SECTOR_NUM (FIRMWARE_UF2_SIZE / 512)
+static const char INDEX_HTM_CONTENT[] =     //
+    "<!doctype html>\n"                     //
+    "<html>"                                //
+    "<body>"                                //
+    "<script>\n"                            //
+    "location.replace(\"" MOTO_URL "\");\n" //
+    "</script>"                             //
+    "</body>"                               //
+    "</html>\n"                             //
+    ;
 
-static_assert(0 == FIRMWARE_UF2_SIZE % 512);
+#define INDEX_HTM_CONTENT_SIZE (sizeof(INDEX_HTM_CONTENT) - 1)
 
-#define FIRMWARE_UF2_FAT_ENTRY_FIRST DATA_SECTOR_TO_FAT_ENTRY(FIRMWARE_UF2_SECTOR)
-#define FIRMWARE_UF2_FAT_ENTRY_LAST DATA_SECTOR_TO_FAT_ENTRY(FIRMWARE_UF2_SECTOR + FIRMWARE_UF2_SECTOR_NUM)
+static_assert(INDEX_HTM_CONTENT_SIZE <= SECTOR_SIZE);
 
-static fat_dir_entry_t FIRMWARE_UF2_dir_entry = {
+static const fat_dir_entry_t INDEX_HTM_DIR_ENTRY = {
+    .name = "INDEX   HTM",
+    .attr = FAT_DIR_ATTR_RO,
+    .first_clusterLO = DATA_SECTOR_TO_FAT_ENTRY(INDEX_HTM_SECTOR),
+    .file_size = INDEX_HTM_CONTENT_SIZE,
+    .create_date = _VOLUME_CREATE_DATE,
+    .create_time = _VOLUME_CREATE_TIME,
+    .write_date = _VOLUME_CREATE_DATE,
+    .write_time = _VOLUME_CREATE_TIME,
+};
+
+// CURRENT.UF2 ------
+
+#define CURRENT_UF2_SIZE (FLASH_FW_SIZE * 2)
+#define CURRENT_UF2_SECTOR_NUM (CURRENT_UF2_SIZE / 512)
+
+static_assert(0 == CURRENT_UF2_SIZE % 512);
+
+#define CURRENT_UF2_FAT_ENTRY_FIRST DATA_SECTOR_TO_FAT_ENTRY(CURRENT_UF2_SECTOR)
+#define CURRENT_UF2_FAT_ENTRY_LAST DATA_SECTOR_TO_FAT_ENTRY(CURRENT_UF2_SECTOR + CURRENT_UF2_SECTOR_NUM)
+
+static fat_dir_entry_t CURRENT_UF2_dir_entry = {
     .name = "CURRENT UF2",
     .attr = FAT_DIR_ATTR_RO,
-    .first_clusterLO = DATA_SECTOR_TO_FAT_ENTRY(FIRMWARE_UF2_SECTOR),
-    .file_size = FIRMWARE_UF2_SIZE,
+    .first_clusterLO = DATA_SECTOR_TO_FAT_ENTRY(CURRENT_UF2_SECTOR),
+    .file_size = CURRENT_UF2_SIZE,
     .create_date = _VOLUME_CREATE_DATE,
     .create_time = _VOLUME_CREATE_TIME,
     .write_date = _VOLUME_CREATE_DATE,
@@ -195,20 +229,22 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             buf[2] = 0xff;
             buf[3] = 0xff;
 
-            // Moto info: known entry 2
+            // MOTO.TXT: known entry 2
             fat_set_word(buf + 4, FAT16_ENTRY_EOF);
             // INFO_UF2.TXT: known entry 3
             fat_set_word(buf + 6, FAT16_ENTRY_EOF);
+            // INDEX.HTM: known entry 4
+            fat_set_word(buf + 8, FAT16_ENTRY_EOF);
         }
 
-        // FIRMWARE.UF2
+        // CURRENT.UF2
         do
         {
-            if (sector < FAT_ENTRY_TO_SECTOR(FIRMWARE_UF2_FAT_ENTRY_FIRST))
+            if (sector < FAT_ENTRY_TO_SECTOR(CURRENT_UF2_FAT_ENTRY_FIRST))
             {
                 break;
             }
-            if (sector > FAT_ENTRY_TO_SECTOR(FIRMWARE_UF2_FAT_ENTRY_LAST - 1))
+            if (sector > FAT_ENTRY_TO_SECTOR(CURRENT_UF2_FAT_ENTRY_LAST - 1))
             {
                 break;
             }
@@ -217,16 +253,16 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             {
                 const uint32_t entry = sector * FAT_ENTRIES_PER_SECTOR + i;
 
-                if (entry < FIRMWARE_UF2_FAT_ENTRY_FIRST)
+                if (entry < CURRENT_UF2_FAT_ENTRY_FIRST)
                 {
                     continue;
                 }
-                if (entry >= FIRMWARE_UF2_FAT_ENTRY_LAST)
+                if (entry >= CURRENT_UF2_FAT_ENTRY_LAST)
                 {
                     break;
                 }
 
-                if (FIRMWARE_UF2_FAT_ENTRY_LAST - 1 == entry)
+                if (CURRENT_UF2_FAT_ENTRY_LAST - 1 == entry)
                 {
                     fat_set_word(buf + FAT_ENTRY_SIZE * entry, FAT16_ENTRY_EOF);
                 }
@@ -252,8 +288,10 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             memcpy(buf + FAT_DIR_ENTRY_SIZE * MOTO_INFO_ROOT_ENTRY, &MOTO_INFO_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
             // INFO_UF2.TXT
             memcpy(buf + FAT_DIR_ENTRY_SIZE * UF2_INFO_ROOT_ENTRY, &UF2_INFO_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
-            // FIRMWARE.UF2
-            memcpy(buf + FAT_DIR_ENTRY_SIZE * FIRMWARE_UF2_ROOT_ENTRY, &FIRMWARE_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
+            // INDEX.HTM
+            memcpy(buf + FAT_DIR_ENTRY_SIZE * INDEX_HTM_ROOT_ENTRY, &INDEX_HTM_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
+            // CURRENT.UF2
+            memcpy(buf + FAT_DIR_ENTRY_SIZE * CURRENT_UF2_ROOT_ENTRY, &CURRENT_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
         }
     }
     else if (sector < SECTOR_NUM)
@@ -274,21 +312,34 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             memcpy(buf, UF2_INFO_CONTENT, UF2_INFO_CONTENT_SIZE);
         }
 
-        // FIRMWARE.UF2
-        if (FIRMWARE_UF2_SECTOR <= sector && sector < FIRMWARE_UF2_SECTOR + FIRMWARE_UF2_SECTOR_NUM)
+        // INDEX.HTM
+        if (INDEX_HTM_SECTOR == sector)
         {
-            const uint8_t *fw_addr = (uint8_t *)(FLASH_FW_ADDR + 256 * (sector - FIRMWARE_UF2_SECTOR));
+            memcpy(buf, INDEX_HTM_CONTENT, INDEX_HTM_CONTENT_SIZE);
+        }
+
+        // CURRENT.UF2
+        if (CURRENT_UF2_SECTOR <= sector && sector < CURRENT_UF2_SECTOR + CURRENT_UF2_SECTOR_NUM)
+        {
+            const uint8_t *fw_addr = (uint8_t *)(FLASH_FW_ADDR + 256 * (sector - CURRENT_UF2_SECTOR));
             uf2_block_t *block = (uf2_block_t *)buf;
             memcpy(block->data, (void *)fw_addr, 256);
 
             // TODO: Can we safely presume the buf aligns to word boundary?
-            fat_set_dword((uint8_t *)&block->magic_start0, UF2_MAGIC_START0);
-            fat_set_dword((uint8_t *)&block->magic_start1, UF2_MAGIC_START1);
-            fat_set_dword((uint8_t *)&block->target_addr, (uint32_t)fw_addr);
-            fat_set_dword((uint8_t *)&block->payload_size, 256);
-            fat_set_dword((uint8_t *)&block->block_no, sector - FIRMWARE_UF2_SECTOR);
-            fat_set_dword((uint8_t *)&block->num_blocks, FIRMWARE_UF2_SECTOR_NUM);
-            fat_set_dword((uint8_t *)&block->magic_end, UF2_MAGIC_END);
+            // fat_set_dword((uint8_t *)&block->magic_start0, UF2_MAGIC_START0);
+            // fat_set_dword((uint8_t *)&block->magic_start1, UF2_MAGIC_START1);
+            // fat_set_dword((uint8_t *)&block->target_addr, (uint32_t)fw_addr);
+            // fat_set_dword((uint8_t *)&block->payload_size, 256);
+            // fat_set_dword((uint8_t *)&block->block_no, sector - CURRENT_UF2_SECTOR);
+            // fat_set_dword((uint8_t *)&block->num_blocks, CURRENT_UF2_SECTOR_NUM);
+            // fat_set_dword((uint8_t *)&block->magic_end, UF2_MAGIC_END);
+            block->magic_start0 = UF2_MAGIC_START0;
+            block->magic_start1 = UF2_MAGIC_START1;
+            block->target_addr = (uint32_t)fw_addr;
+            block->payload_size = 256;
+            block->block_no = sector - CURRENT_UF2_SECTOR;
+            block->num_blocks = CURRENT_UF2_SECTOR_NUM;
+            block->magic_end = UF2_MAGIC_END;
         }
     }
 
