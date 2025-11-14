@@ -90,17 +90,17 @@ void usbd_configure_done_callback(void)
 
 void usbd_msc_get_cap(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
 {
-    vfs_get_cap(block_num, block_size);
+    usb_fs_get_cap(block_num, block_size);
 }
 
 int usbd_msc_sector_read(uint32_t sector, uint8_t *buffer, uint32_t length)
 {
-    return vfs_sector_read(sector, buffer, length);
+    return usb_fs_sector_read(sector, buffer, length);
 }
 
 int usbd_msc_sector_write(uint32_t sector, uint8_t *buffer, uint32_t length)
 {
-    return vfs_sector_write(sector, buffer, length);
+    return usb_fs_sector_write(sector, buffer, length);
 }
 
 struct usbd_interface intf0;

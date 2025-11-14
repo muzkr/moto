@@ -125,14 +125,14 @@ static fat_dir_entry_t FIRMWARE_UF2_dir_entry = {
 
 // ---------------
 
-void vfs_get_cap(uint32_t *sector_num, uint16_t *sector_size)
+void usb_fs_get_cap(uint32_t *sector_num, uint16_t *sector_size)
 {
     log("get_cap\n");
     *sector_num = SECTOR_NUM;
     *sector_size = SECTOR_SIZE;
 }
 
-int vfs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
+int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
 {
     log("sector_read: %d, %08x, %d\n", sector, (uint32_t)buf, size);
 
@@ -147,6 +147,10 @@ int vfs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
     {
         memcpy(buf, &BOOT_SECTOR_RECORD, sizeof(BOOT_SECTOR_RECORD));
         fat_set_word(buf + SECTOR_SIZE - 2, FAT_SIGNATURE_WORD);
+    }
+    else if (sector < FAT_SECTOR)
+    {
+        // Preserved
     }
     else if (sector < ROOT_SECTOR)
     {
@@ -238,6 +242,8 @@ int vfs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             const uint8_t *fw_addr = (uint8_t *)(FLASH_FW_ADDR + 256 * (sector - FIRMWARE_UF2_SECTOR));
             uf2_block_t *block = (uf2_block_t *)buf;
             memcpy(block->data, (void *)fw_addr, 256);
+
+            // TODO: Can we safely presume the buf aligns to word boundary?
             fat_set_dword((uint8_t *)&block->magic_start0, UF2_MAGIC_START0);
             fat_set_dword((uint8_t *)&block->magic_start1, UF2_MAGIC_START1);
             fat_set_dword((uint8_t *)&block->target_addr, (uint32_t)fw_addr);
@@ -251,7 +257,7 @@ int vfs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
     return 0;
 }
 
-int vfs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
+int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
 {
     log("sector_write: %d, %08x, %d\n", sector, (uint32_t)buf, size);
     return 0;
