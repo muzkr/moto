@@ -30,7 +30,6 @@
 
 #include "main.h"
 #include "py32f071_it.h"
-#include "systick.h"
 
 /******************************************************************************/
 /*          Cortex-M0+ Processor Interruption and Exception Handlers          */

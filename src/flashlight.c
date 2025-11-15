@@ -1,8 +1,6 @@
 
 #include "flashlight.h"
-#include "py32f071_ll_bus.h"
-#include "py32f071_ll_gpio.h"
-#include "systick.h"
+#include "main.h"
 #include "log.h"
 
 // PC13
@@ -43,7 +41,7 @@ void flashlight_off()
 
 void flashlight_flash(uint32_t delay)
 {
-    flash_state.time = systick_timestamp();
+    flash_state.time = main_timestamp();
     flash_state.delay = delay / 2;
 }
 
@@ -51,7 +49,7 @@ void flashlight_update()
 {
     if (flash_state.delay > 0)
     {
-        uint32_t t = systick_timestamp();
+        uint32_t t = main_timestamp();
         uint32_t dt = t - flash_state.time;
         if (dt >= flash_state.delay)
         {

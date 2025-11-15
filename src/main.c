@@ -29,20 +29,42 @@
  */
 
 #include "main.h"
+#include "py32f071_it.h"
 #include "usb_config.h"
-#include "systick.h"
 #include "log.h"
-#include "systick.h"
 #include "flashlight.h"
 
 static void APP_SystemClockConfig();
-static void APP_USBInit();
+static void APP_SysTick_Init();
+static void APP_USB_Init();
 
 #if defined(ENABLE_LOGGING)
 #define USARTx USART1
 static void APP_USART_Init();
 static void APP_DumpLog();
 #endif
+
+static volatile uint32_t timestamp;
+static volatile uint32_t schedule_reset_delay = 0;
+
+uint32_t main_timestamp()
+{
+    return timestamp;
+}
+
+void main_schedule_reset(uint32_t delay)
+{
+    schedule_reset_delay = delay;
+}
+
+/**
+ * @brief This function handles System tick timer.
+ */
+void SysTick_Handler(void)
+{
+    timestamp++;
+    flashlight_update();
+}
 
 /**
  * @brief  Main program.
@@ -57,7 +79,7 @@ int main()
     LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
-    systick_init();
+    APP_SysTick_Init();
 
 #if defined(ENABLE_LOGGING)
     APP_USART_Init();
@@ -67,7 +89,7 @@ int main()
     flashlight_init();
     flashlight_on();
 
-    APP_USBInit();
+    APP_USB_Init();
 
     log("start\n");
 
@@ -75,11 +97,27 @@ int main()
 
     while (1)
     {
+        if (schedule_reset_delay)
+        {
+            LL_mDelay(schedule_reset_delay);
+            flashlight_off();
+            NVIC_SystemReset();
+            while (1)
+            {
+            }
+        }
+
 #if defined(ENABLE_LOGGING)
         APP_DumpLog();
 #endif
-        flashlight_update();
     }
+}
+
+static void APP_SysTick_Init()
+{
+    SysTick_Config(SystemCoreClock / 1000);
+    NVIC_SetPriority(SysTick_IRQn, 0);
+    // NVIC_EnableIRQ(SysTick_IRQn);
 }
 
 #if defined(ENABLE_LOGGING)
@@ -141,7 +179,7 @@ static void APP_DumpLog()
  * @param  None
  * @retval None
  */
-static void APP_USBInit()
+static void APP_USB_Init()
 {
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USBD);
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
@@ -149,6 +187,7 @@ static void APP_USBInit()
     msc_ram_init();
 
     /* Enable USB interrupt */
+    NVIC_SetPriority(USBD_IRQn, 1);
     NVIC_EnableIRQ(USBD_IRQn);
 }
 
