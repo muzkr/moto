@@ -3,22 +3,16 @@
 #include <assert.h>
 #include <stdbool.h>
 #include "main.h"
+#include "board.h"
 #include "log.h"
 #include "fat.h"
 #include "version.h"
-#include "flashlight.h"
 #include "uf2.h"
 #include "flash.h"
-
-#define BL_SIZE 0x2800 // 10 KB
-// #define FLASH_FW_ADDR (FLASH_BASE + BL_SIZE)
-#define FLASH_FW_ADDR (FLASH_BASE + 64 * 1024) // This is for test! 0x08010000
-#define FLASH_FW_SIZE (FLASH_END + 1 - FLASH_FW_ADDR)
-
-static_assert(0 == FLASH_FW_ADDR % FLASH_PAGE_SIZE);
+#include "fw.h"
 
 // Number of pages taken by the internal firmware area
-#define FLASH_FW_PAGE_NUM (FLASH_FW_SIZE / FLASH_PAGE_SIZE)
+#define FW_PAGE_NUM (FW_SIZE / FLASH_PAGE_SIZE)
 
 #define SECTOR_NUM 32000
 #define SECTOR_SIZE FAT_DEFAULT_SECTOR_SIZE
@@ -64,7 +58,7 @@ static_assert(0 == FLASH_FW_ADDR % FLASH_PAGE_SIZE);
 #define CURRENT_UF2_SECTOR 3           // First data sector of CURRENT.UF2
 #define CURRENT_UF2_SECTOR_NUM_MAX 472 // Max number of data sectors of CURRENT.UF2
 
-static_assert(FLASH_FW_PAGE_NUM <= CURRENT_UF2_SECTOR_NUM_MAX);
+static_assert(FW_PAGE_NUM <= CURRENT_UF2_SECTOR_NUM_MAX);
 
 // ------------
 
@@ -179,13 +173,13 @@ static const fat_dir_entry_t INDEX_HTM_DIR_ENTRY = {
 // CURRENT.UF2 ------
 
 #define CURRENT_UF2_FAT_ENTRY_FIRST DATA_SECTOR_TO_FAT_ENTRY(CURRENT_UF2_SECTOR)
-#define CURRENT_UF2_FAT_ENTRY_LAST (CURRENT_UF2_FAT_ENTRY_FIRST + FLASH_FW_PAGE_NUM)
+#define CURRENT_UF2_FAT_ENTRY_LAST (CURRENT_UF2_FAT_ENTRY_FIRST + FW_PAGE_NUM)
 
 static const fat_dir_entry_t CURRENT_UF2_dir_entry = {
     .name = "CURRENT UF2",
     .attr = FAT_DIR_ATTR_RO,
     .first_clusterLO = CURRENT_UF2_FAT_ENTRY_FIRST,
-    .file_size = FLASH_FW_SIZE * 2,
+    .file_size = FW_SIZE * 2,
     .create_date = _VOLUME_CREATE_DATE,
     .create_time = _VOLUME_CREATE_TIME,
     .write_date = _VOLUME_CREATE_DATE,
@@ -201,7 +195,7 @@ static struct
     uint8_t num_blocks;
 } fw_program_state = {0};
 
-static uint8_t fw_program_map[FLASH_FW_PAGE_NUM];
+static uint8_t fw_program_map[FW_PAGE_NUM];
 
 static bool check_fw_block(const uf2_block_t *block)
 {
@@ -213,7 +207,7 @@ static bool check_fw_block(const uf2_block_t *block)
     {
         return false;
     }
-    if (block->num_blocks > FLASH_FW_PAGE_NUM)
+    if (block->num_blocks > FW_PAGE_NUM)
     {
         return false;
     }
@@ -384,9 +378,9 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             memcpy(buf, INDEX_HTM_CONTENT, INDEX_HTM_CONTENT_SIZE);
         }
         // CURRENT.UF2
-        else if (CURRENT_UF2_SECTOR <= sector && sector < CURRENT_UF2_SECTOR + FLASH_FW_PAGE_NUM)
+        else if (CURRENT_UF2_SECTOR <= sector && sector < CURRENT_UF2_SECTOR + FW_PAGE_NUM)
         {
-            const uint32_t fw_addr = FLASH_FW_ADDR + FLASH_PAGE_SIZE * (sector - CURRENT_UF2_SECTOR);
+            const uint32_t fw_addr = FW_ADDR + FLASH_PAGE_SIZE * (sector - CURRENT_UF2_SECTOR);
             uf2_block_t *block = (uf2_block_t *)buf;
             memcpy(block->data, (void *)fw_addr, FLASH_PAGE_SIZE);
 
@@ -395,7 +389,7 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             block->target_addr = fw_addr;
             block->payload_size = FLASH_PAGE_SIZE;
             block->block_no = sector - CURRENT_UF2_SECTOR;
-            block->num_blocks = FLASH_FW_PAGE_NUM;
+            block->num_blocks = FW_PAGE_NUM;
             block->magic_end = UF2_MAGIC_END;
         }
     }
@@ -437,7 +431,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
             fw_program_state.in_progress = true;
             fw_program_state.num_blocks = block->num_blocks;
             memset(fw_program_map, 0, sizeof(fw_program_map));
-            flashlight_flash(100);
+            board_flashlight_flash(100);
             log("fw program start: %d\n", block->num_blocks);
         }
         else
@@ -458,8 +452,8 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         if (fw_program_finished())
         {
             log("fw program finished\n");
-            flashlight_on();
-            main_schedule_reset(100);
+            board_flashlight_on();
+            main_schedule_reset(500);
         }
 
     } while (0);

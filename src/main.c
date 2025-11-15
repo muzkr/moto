@@ -32,11 +32,19 @@
 #include "py32f071_it.h"
 #include "usb_config.h"
 #include "log.h"
-#include "flashlight.h"
+#include "board.h"
+#include "fw.h"
+
+typedef enum
+{
+    BOOT_FW,
+    BOOT_DFU,
+} BootMode_t;
 
 static void APP_SystemClockConfig();
 static void APP_SysTick_Init();
 static void APP_USB_Init();
+static BootMode_t GetBootMode();
 
 #if defined(ENABLE_LOGGING)
 #define USARTx USART1
@@ -63,7 +71,7 @@ void main_schedule_reset(uint32_t delay)
 void SysTick_Handler(void)
 {
     timestamp++;
-    flashlight_update();
+    board_flashlight_update();
 }
 
 /**
@@ -81,26 +89,34 @@ int main()
 
     APP_SysTick_Init();
 
+    board_init();
+    board_flashlight_on();
+
 #if defined(ENABLE_LOGGING)
     APP_USART_Init();
     log_init();
 #endif
 
-    flashlight_init();
-    flashlight_on();
+    BootMode_t boot_mode = GetBootMode();
+    if (BOOT_FW == boot_mode)
+    {
+        fw_boot();
+    }
+
+    // DFU mode -------
 
     APP_USB_Init();
 
     log("start\n");
 
-    // flashlight_flash(1000);
+    // board_flashlight_flash(1000);
 
     while (1)
     {
         if (schedule_reset_delay)
         {
             LL_mDelay(schedule_reset_delay);
-            flashlight_off();
+            board_flashlight_off();
             NVIC_SystemReset();
             while (1)
             {
@@ -111,6 +127,25 @@ int main()
         APP_DumpLog();
 #endif
     }
+}
+
+static BootMode_t GetBootMode()
+{
+    log("PTT = %d, side key1 = %d, M = %d\n", //
+        board_check_PTT(),                    //
+        board_check_side_key1(),              //
+        board_check_M_key()                   //
+    );
+
+    if (!board_check_PTT())
+    {
+        return BOOT_FW;
+    }
+    if (board_check_side_key1())
+    {
+        return BOOT_FW;
+    }
+    return BOOT_DFU;
 }
 
 static void APP_SysTick_Init()

@@ -2,7 +2,7 @@
 PROJECT = moto
 
 ENABLE_LOGGING ?= 0
-VERSION_STRING ?= 1.0.0-preview1
+VERSION_STRING ?= 1.0.0
 
 
 TARGET = $(PROJECT)_$(VERSION_STRING)
@@ -28,10 +28,11 @@ BUILD_DIR = build
 # C sources
 C_SOURCES = \
 src/main.c \
-src/flashlight.c \
+src/board.c \
 src/usbd_msc_impl.c \
 src/dfu.c \
 src/flash.c \
+src/fw.c \
 src/py32f071_it.c \
 src/system_py32f071.c \
 lib/Middlewares/CherryUSB/core/usbd_core.c \
@@ -47,7 +48,8 @@ lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_utils.c
 
 # ASM sources
 ASM_SOURCES = \
-startup_py32f071xx.s
+startup_py32f071xx.s \
+src/fw_boot0.s
 
 
 #######################################
@@ -69,6 +71,8 @@ SZ = $(PREFIX)size
 endif
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
+
+PYTHON = python3
  
 #######################################
 # CFLAGS
@@ -144,7 +148,7 @@ LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BU
 	-Wl,--print-memory-usage
 
 # default action: build all
-all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
+all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).uf2
 
 
 #######################################
@@ -173,6 +177,9 @@ $(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(BIN) $< $@	
 	
+$(BUILD_DIR)/%.uf2: $(BUILD_DIR)/%.bin | $(BUILD_DIR)
+	$(PYTHON) utils/uf2conv.py -c -b 0x08000000 -o $@ $<
+
 $(BUILD_DIR):
 	mkdir $@		
 

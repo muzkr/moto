@@ -51,7 +51,7 @@ void flash_program_page(uint32_t addr, const uint8_t *buf)
     // LL_mDelay(20);
     // return;
 
-    if (0 == memcpy((void *)addr, buf, FLASH_PAGE_SIZE))
+    if (0 == memcmp((void *)addr, buf, FLASH_PAGE_SIZE))
     {
         return;
     }
