@@ -203,7 +203,15 @@ static bool check_fw_block(const uf2_block_t *block)
     {
         return false;
     }
-    if (256 != block->payload_size)
+    if (FLASH_PAGE_SIZE != block->payload_size)
+    {
+        return false;
+    }
+    if (0 != block->target_addr % FLASH_PAGE_SIZE)
+    {
+        return false;
+    }
+    if (block->target_addr < FW_ADDR || block->target_addr >= (FW_ADDR + FW_SIZE))
     {
         return false;
     }
