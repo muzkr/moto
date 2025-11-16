@@ -4,7 +4,7 @@
 #include "log.h"
 
 #define MK_PIN(port, pin) ((uint32_t)((((uint32_t)(port)) << 16) | (0xffff & (pin))))
-#define GET_PORT(pin) ((GPIO_TypeDef *)(IOPORT_BASE + (0xffff & ((pin) >> 16))))
+#define GET_PORT(pin) ((GPIO_TypeDef *)(IOPORT_BASE + ((pin) >> 16)))
 #define GET_PIN_MASK(pin) (0xffff & (pin))
 
 #define RESET_OUTPUT_PIN(pin) LL_GPIO_ResetOutputPin(GET_PORT(pin), GET_PIN_MASK(pin))
@@ -15,6 +15,8 @@
 #define PTT_PIN MK_PIN(GPIOB, LL_GPIO_PIN_10)
 // PB15: Keypad row 1
 #define KEYPAD_ROW1_PIN MK_PIN(GPIOB, LL_GPIO_PIN_15)
+// PB14: Keypad row 2
+#define KEYPAD_ROW2_PIN MK_PIN(GPIOB, LL_GPIO_PIN_14)
 // PB6: Keypad col 1
 #define KEYPAD_COL1_PIN MK_PIN(GPIOB, LL_GPIO_PIN_6)
 
@@ -26,16 +28,19 @@ void board_init()
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOB);
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOC);
 
+    RESET_OUTPUT_PIN(FLASHLIGHT_PIN);
+    SET_OUTPUT_PIN(KEYPAD_COL1_PIN);
+
     LL_GPIO_InitTypeDef InitStruct = {0};
-    InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+    InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
     InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
     InitStruct.Pull = LL_GPIO_PULL_UP;
 
-    // PTT & row 1
-    InitStruct.Pin = GET_PIN_MASK(PTT_PIN) | GET_PIN_MASK(KEYPAD_ROW1_PIN);
+    // PTT & keypad rows
+    InitStruct.Pin = GET_PIN_MASK(PTT_PIN) | GET_PIN_MASK(KEYPAD_ROW1_PIN) | GET_PIN_MASK(KEYPAD_ROW2_PIN);
     InitStruct.Mode = LL_GPIO_MODE_INPUT;
     LL_GPIO_Init(GPIOB, &InitStruct);
-    LL_GPIO_SetPinPull(GET_PORT(KEYPAD_ROW1_PIN), GET_PIN_MASK(KEYPAD_ROW1_PIN), LL_GPIO_PULL_NO);
+    // LL_GPIO_SetPinPull(GET_PORT(KEYPAD_ROW1_PIN), GET_PIN_MASK(KEYPAD_ROW1_PIN), LL_GPIO_PULL_NO);
 
     // Keypad col 1
     InitStruct.Pin = GET_PIN_MASK(KEYPAD_COL1_PIN);
@@ -46,9 +51,6 @@ void board_init()
     InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
     InitStruct.Pin = GET_PIN_MASK(FLASHLIGHT_PIN);
     LL_GPIO_Init(GPIOC, &InitStruct);
-
-    SET_OUTPUT_PIN(KEYPAD_COL1_PIN);
-    RESET_OUTPUT_PIN(FLASHLIGHT_PIN);
 }
 
 // Keypad ------
@@ -58,17 +60,17 @@ bool board_check_PTT()
     return !IS_INPUT_PIN_SET(PTT_PIN);
 }
 
-bool board_check_side_key1()
+bool board_check_side_keys()
 {
     SET_OUTPUT_PIN(KEYPAD_COL1_PIN);
-    LL_mDelay(1);
-    return !IS_INPUT_PIN_SET(KEYPAD_ROW1_PIN);
+    LL_mDelay(3);
+    return !IS_INPUT_PIN_SET(KEYPAD_ROW1_PIN) || !IS_INPUT_PIN_SET(KEYPAD_ROW2_PIN);
 }
 
 bool board_check_M_key()
 {
     RESET_OUTPUT_PIN(KEYPAD_COL1_PIN);
-    LL_mDelay(1);
+    LL_mDelay(3);
     bool b = !IS_INPUT_PIN_SET(KEYPAD_ROW1_PIN);
     SET_OUTPUT_PIN(KEYPAD_COL1_PIN);
     return b;

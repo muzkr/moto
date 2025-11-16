@@ -8,7 +8,7 @@
 void board_init();
 
 bool board_check_PTT();
-bool board_check_side_key1();
+bool board_check_side_keys();
 bool board_check_M_key();
 
 void board_flashlight_on();

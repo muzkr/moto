@@ -90,7 +90,6 @@ int main()
     APP_SysTick_Init();
 
     board_init();
-    board_flashlight_on();
 
 #if defined(ENABLE_LOGGING)
     APP_USART_Init();
@@ -104,6 +103,8 @@ int main()
     }
 
     // DFU mode -------
+
+    board_flashlight_on();
 
     APP_USB_Init();
 
@@ -137,11 +138,11 @@ static BootMode_t GetBootMode()
         board_check_M_key()                   //
     );
 
-    if (!board_check_PTT())
+    if (board_check_side_keys())
     {
         return BOOT_FW;
     }
-    if (board_check_side_key1())
+    if (!board_check_PTT())
     {
         return BOOT_FW;
     }
