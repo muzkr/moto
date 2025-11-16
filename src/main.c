@@ -236,7 +236,7 @@ static void APP_SystemClockConfig()
 {
     /* Enable and initialize HSI */
     LL_RCC_HSI_Enable();
-    LL_RCC_HSI_SetCalibFreq(LL_RCC_HSICALIBRATION_16MHz);
+    LL_RCC_HSI_SetCalibFreq(LL_RCC_HSICALIBRATION_24MHz);
     while (LL_RCC_HSI_IsReady() != 1)
     {
     }
@@ -249,13 +249,13 @@ static void APP_SystemClockConfig()
     {
     }
 
-    /* PLL multiplication factor of 3 using HSI (16MHz) */
+    /* PLL multiplication factor of HSI */
     LL_RCC_PLL_Disable();
     while (LL_RCC_PLL_IsReady() != 0)
     {
     }
     LL_RCC_PLL_SetMainSource(LL_RCC_PLLSOURCE_HSI);
-    LL_RCC_PLL_SetMulFactor(LL_RCC_PLLMUL_3);
+    LL_RCC_PLL_SetMulFactor(LL_RCC_PLLMUL_2);
     LL_RCC_PLL_Enable();
     while (LL_RCC_PLL_IsReady() != 1)
     {
