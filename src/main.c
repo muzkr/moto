@@ -220,7 +220,7 @@ static void APP_DumpLog()
 static void APP_USB_Init()
 {
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USBD);
-    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
+    // LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
 
     msc_ram_init();
 
