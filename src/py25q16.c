@@ -215,7 +215,7 @@ void py25q16_init()
     SPI_Init();
 }
 
-void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size)
+static void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size)
 {
 #ifdef DEBUG
     printf("spi flash read: %06x %ld\n", Address, Size);
@@ -240,7 +240,12 @@ void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size)
     CS_RELEASE();
 }
 
-void py25q16_write(uint32_t Address, const void *pBuffer, uint32_t Size, bool Append)
+void py25q16_read_page(uint32_t addr, void *buf)
+{
+    py25q16_read(addr, buf, PY25Q16_PAGE_SIZE);
+}
+
+void py25q16_write_page(uint32_t Address, const void *pBuffer)
 {
 #ifdef DEBUG
     printf("spi flash write: %06x %ld %d\n", Address, Size, Append);
@@ -250,69 +255,40 @@ void py25q16_write(uint32_t Address, const void *pBuffer, uint32_t Size, bool Ap
     uint32_t SecOffset = Address % SECTOR_SIZE;
     uint32_t SecSize = SECTOR_SIZE - SecOffset;
 
-    while (Size)
+    if (SecSize > PY25Q16_PAGE_SIZE)
     {
-        if (Size < SecSize)
-        {
-            SecSize = Size;
-        }
+        SecSize = PY25Q16_PAGE_SIZE;
+    }
 
-        if (SecAddr != SectorCacheAddr)
-        {
-            py25q16_read(SecAddr, SectorCache, SECTOR_SIZE);
-            SectorCacheAddr = SecAddr;
-        }
-
-        if (0 != memcmp(pBuffer, (char *)SectorCache + SecOffset, SecSize))
-        {
-            bool Erase = false;
-            for (uint32_t i = 0; i < SecSize; i++)
-            {
-                if (0xff != SectorCache[SecOffset + i])
-                {
-                    Erase = true;
-                    break;
-                }
-            }
-
-            memcpy(SectorCache + SecOffset, pBuffer, SecSize);
-
-            if (Erase)
-            {
-                SectorErase(SecAddr);
-                if (Append)
-                {
-                    SectorProgram(SecAddr, SectorCache, SecOffset + SecSize);
-                    memset(SectorCache + SecOffset + SecSize, 0xff, SECTOR_SIZE - SecOffset - SecSize);
-                }
-                else
-                {
-                    SectorProgram(SecAddr, SectorCache, SECTOR_SIZE);
-                }
-            }
-            else
-            {
-                SectorProgram(Address, pBuffer, SecSize);
-            }
-        }
-
-        Address += SecSize;
-        pBuffer += SecSize;
-        Size -= SecSize;
-
-        SecAddr += SECTOR_SIZE;
-        SecOffset = 0;
-        SecSize = SECTOR_SIZE;
-    } // while
-}
-
-void PY25Q16_SectorErase(uint32_t Address)
-{
-    Address -= (Address % SECTOR_SIZE);
-    SectorErase(Address);
-    if (SectorCacheAddr == Address)
+    if (SecAddr != SectorCacheAddr)
     {
-        memset(SectorCache, 0xff, SECTOR_SIZE);
+        py25q16_read(SecAddr, SectorCache, SECTOR_SIZE);
+        SectorCacheAddr = SecAddr;
+    }
+
+    if (0 != memcmp(pBuffer, (char *)SectorCache + SecOffset, SecSize))
+    {
+        bool Erase = false;
+        for (uint32_t i = 0; i < SecSize; i++)
+        {
+            if (0xff != SectorCache[SecOffset + i])
+            {
+                Erase = true;
+                break;
+            }
+        }
+
+        memcpy(SectorCache + SecOffset, pBuffer, SecSize);
+
+        if (Erase)
+        {
+            SectorErase(SecAddr);
+            SectorProgram(SecAddr, SectorCache, SECTOR_SIZE);
+        }
+        else
+        {
+            SectorProgram(Address, pBuffer, SecSize);
+        }
     }
 }
 
@@ -323,23 +299,9 @@ static inline void WriteAddr(uint32_t Addr)
     SPI_WriteByte(0xff & Addr);
 }
 
-static uint8_t ReadStatusReg(uint32_t Which)
+static uint8_t ReadStatusReg_0()
 {
-    uint8_t Cmd;
-    switch (Which)
-    {
-    case 0:
-        Cmd = 0x5;
-        break;
-    case 1:
-        Cmd = 0x35;
-        break;
-    case 2:
-        Cmd = 0x15;
-        break;
-    default:
-        return 0;
-    }
+    uint8_t Cmd = 0x5;
 
     CS_ASSERT();
     SPI_WriteByte(Cmd);
@@ -351,9 +313,10 @@ static uint8_t ReadStatusReg(uint32_t Which)
 
 static void WaitWIP()
 {
-    for (int i = 0; i < 1000000; i++)
+    // for (int i = 0; i < 1000000; i++)
+    while (1)
     {
-        uint8_t Status = ReadStatusReg(0);
+        uint8_t Status = ReadStatusReg_0();
         if (1 & Status) // WIP
         {
             // SYSTICK_DelayUs(10);

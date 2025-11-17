@@ -40,7 +40,7 @@
 #define INDEX_HTM_SECTOR 2             // First data sector of INDEX.HTM
 #define CURRENT_UF2_SECTOR 3           // First data sector of CURRENT.UF2
 #define CURRENT_UF2_SECTOR_NUM_MAX 472 // Max number of data sectors of CURRENT.UF2
-#define DATA_UF2_SECTOR 475
+#define DATA_UF2_SECTOR (CURRENT_UF2_SECTOR + CURRENT_UF2_SECTOR_NUM_MAX)
 
 static_assert(FW_PAGE_NUM <= CURRENT_UF2_SECTOR_NUM_MAX);
 

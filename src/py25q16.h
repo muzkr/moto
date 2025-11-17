@@ -24,8 +24,10 @@
 #define PY25Q16_PAGE_NUM 8192
 #define PY25Q16_SIZE (PY25Q16_PAGE_SIZE * PY25Q16_PAGE_NUM)
 
+#define PY25Q16_BASE_ADDR 0
+
 void py25q16_init();
-void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size);
-void py25q16_write(uint32_t Address, const void *pBuffer, uint32_t Size, bool Append);
+void py25q16_read_page(uint32_t Address, void *pBuffer);
+void py25q16_write_page(uint32_t Address, const void *pBuffer);
 
 #endif

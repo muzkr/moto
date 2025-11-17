@@ -333,7 +333,7 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
         {
             const uint32_t data_addr = FLASH_PAGE_SIZE * (sector - DATA_UF2_SECTOR);
             uf2_block_t *block = (uf2_block_t *)buf;
-            py25q16_read(data_addr, block->data, FLASH_PAGE_SIZE);
+            py25q16_read_page(data_addr, block->data);
 
             block->magic_start0 = UF2_MAGIC_START0;
             block->magic_start1 = UF2_MAGIC_START1;

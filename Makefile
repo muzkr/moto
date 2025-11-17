@@ -35,7 +35,6 @@ src/dfu_write.c \
 src/internal_flash.c \
 src/fw_boot.c \
 src/py25q16.c \
-src/flash_programmer.c \
 src/py32f071_it.c \
 src/system_py32f071.c \
 lib/Middlewares/CherryUSB/core/usbd_core.c \
