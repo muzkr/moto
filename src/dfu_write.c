@@ -35,7 +35,8 @@ static bool check_block(const uf2_block_t *block)
     {
         return false;
     }
-    if (FLASH_PAGE_SIZE != block->payload_size)
+    // Allow less than one page
+    if (block->payload_size > FLASH_PAGE_SIZE)
     {
         return false;
     }
