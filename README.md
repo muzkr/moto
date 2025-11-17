@@ -1,4 +1,4 @@
-# Moto: Modern Bootloader for Quansheng UV-K5 (V3) (and Variants)
+# Moto: Modern Bootloader for Quansheng UV-K5 (V3) and Variants
 
 Moto (Japanese "もと / 元", meaning "origin") is a modern bootloader for UV-K5 (V3) and variants (UV-K6, UV-K1, etc).
 Moto mounts the radio as a USB disk on a computer, providing a drag-and-drop user experience for firmware or data flashing and backups.
