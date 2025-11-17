@@ -36,6 +36,10 @@ static bool check_block(const uf2_block_t *block)
         return false;
     }
     // Allow less than one page
+    if (0 == block->payload_size)
+    {
+        return false;
+    }
     if (block->payload_size > FLASH_PAGE_SIZE)
     {
         return false;
@@ -121,6 +125,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         const uf2_block_t *block = (uf2_block_t *)buf;
         if (!check_block(block))
         {
+            log("invalid block ignored\n");
             break;
         }
 
@@ -131,10 +136,11 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
                 log("program start: %d\n", block->num_blocks);
                 program_state.in_progress = true;
                 memset(block_map, 0, block->num_blocks);
-                board_flashlight_flash(100);
+                board_flashlight_flash(50);
             }
             else
             {
+                log("first block rejected\n");
                 return 1; // Error
             }
         }
@@ -150,6 +156,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
             }
             else
             {
+                log("subsequent block rejected\n");
                 return 1; // Error
             }
         }
@@ -161,7 +168,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         if (program_finished())
         {
             log("program finished\n");
-            board_flashlight_on();
+            board_flashlight_flash(1000);
 
             if (FW_ADDR == program_state.base_addr)
             {

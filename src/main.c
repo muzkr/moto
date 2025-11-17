@@ -107,7 +107,8 @@ int main()
 
     log("start\n");
 
-    board_flashlight_on();
+    // board_flashlight_on();
+    board_flashlight_flash(1000);
     py25q16_init();
     APP_USB_Init();
 
@@ -135,7 +136,7 @@ static BootMode_t GetBootMode()
 {
     log("PTT = %d, side key1 = %d, M = %d\n", //
         board_check_PTT(),                    //
-        board_check_side_key1(),              //
+        board_check_side_keys(),              //
         board_check_M_key()                   //
     );
 

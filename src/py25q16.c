@@ -21,14 +21,9 @@
 #include "py32f071_ll_bus.h"
 #include "py32f071_ll_system.h"
 #include "py32f071_ll_spi.h"
-#include "py32f071_ll_dma.h"
 #include "py32f071_ll_utils.h"
 
-// #define DEBUG
-
 #define SPIx SPI2
-#define CHANNEL_RD LL_DMA_CHANNEL_4
-#define CHANNEL_WR LL_DMA_CHANNEL_5
 
 #define CS_PORT GPIOA
 #define CS_PIN LL_GPIO_PIN_3
@@ -46,7 +41,6 @@ static volatile bool TC_Flag;
 static void SPI_Init()
 {
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI2);
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
 
     do
@@ -72,12 +66,6 @@ static void SPI_Init()
 
     } while (0);
 
-    LL_SYSCFG_SetDMARemap(DMA1, CHANNEL_RD, LL_SYSCFG_DMA_MAP_SPI2_RD);
-    LL_SYSCFG_SetDMARemap(DMA1, CHANNEL_WR, LL_SYSCFG_DMA_MAP_SPI2_WR);
-
-    NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn, 1);
-    NVIC_EnableIRQ(DMA1_Channel4_5_6_7_IRQn);
-
     LL_SPI_InitTypeDef InitStruct;
     LL_SPI_StructInit(&InitStruct);
     InitStruct.Mode = LL_SPI_MODE_MASTER;
@@ -93,104 +81,6 @@ static void SPI_Init()
     LL_SPI_Enable(SPIx);
 }
 
-static void SPI_ReadBuf(uint8_t *Buf, uint32_t Size)
-{
-    LL_SPI_Disable(SPIx);
-    LL_DMA_DisableChannel(DMA1, CHANNEL_RD);
-    LL_DMA_DisableChannel(DMA1, CHANNEL_WR);
-
-    LL_DMA_ClearFlag_GI4(DMA1);
-
-    LL_DMA_ConfigTransfer(DMA1, CHANNEL_RD,                 //
-                          LL_DMA_DIRECTION_PERIPH_TO_MEMORY //
-                              | LL_DMA_MODE_NORMAL          //
-                              | LL_DMA_PERIPH_NOINCREMENT   //
-                              | LL_DMA_MEMORY_INCREMENT     //
-                              | LL_DMA_PDATAALIGN_BYTE      //
-                              | LL_DMA_MDATAALIGN_BYTE      //
-                              | LL_DMA_PRIORITY_MEDIUM      //
-    );
-
-    LL_DMA_ConfigTransfer(DMA1, CHANNEL_WR,                 //
-                          LL_DMA_DIRECTION_MEMORY_TO_PERIPH //
-                              | LL_DMA_MODE_NORMAL          //
-                              | LL_DMA_PERIPH_NOINCREMENT   //
-                              | LL_DMA_MEMORY_NOINCREMENT   //
-                              | LL_DMA_PDATAALIGN_BYTE      //
-                              | LL_DMA_MDATAALIGN_BYTE      //
-                              | LL_DMA_PRIORITY_MEDIUM      //
-    );
-
-    LL_DMA_SetMemoryAddress(DMA1, CHANNEL_RD, (uint32_t)Buf);
-    LL_DMA_SetPeriphAddress(DMA1, CHANNEL_RD, LL_SPI_DMA_GetRegAddr(SPIx));
-    LL_DMA_SetDataLength(DMA1, CHANNEL_RD, Size);
-
-    LL_DMA_SetMemoryAddress(DMA1, CHANNEL_WR, (uint32_t)BlackHole);
-    LL_DMA_SetPeriphAddress(DMA1, CHANNEL_WR, LL_SPI_DMA_GetRegAddr(SPIx));
-    LL_DMA_SetDataLength(DMA1, CHANNEL_WR, Size);
-
-    TC_Flag = false;
-    LL_DMA_EnableIT_TC(DMA1, CHANNEL_RD);
-    LL_DMA_EnableChannel(DMA1, CHANNEL_RD);
-    LL_DMA_EnableChannel(DMA1, CHANNEL_WR);
-
-    LL_SPI_EnableDMAReq_RX(SPIx);
-    LL_SPI_Enable(SPIx);
-    LL_SPI_EnableDMAReq_TX(SPIx);
-
-    while (!TC_Flag)
-        ;
-}
-
-static void SPI_WriteBuf(const uint8_t *Buf, uint32_t Size)
-{
-    LL_SPI_Disable(SPIx);
-    LL_DMA_DisableChannel(DMA1, CHANNEL_RD);
-    LL_DMA_DisableChannel(DMA1, CHANNEL_WR);
-
-    LL_DMA_ClearFlag_GI4(DMA1);
-
-    LL_DMA_ConfigTransfer(DMA1, CHANNEL_RD,                 //
-                          LL_DMA_DIRECTION_PERIPH_TO_MEMORY //
-                              | LL_DMA_MODE_NORMAL          //
-                              | LL_DMA_PERIPH_NOINCREMENT   //
-                              | LL_DMA_MEMORY_NOINCREMENT   //
-                              | LL_DMA_PDATAALIGN_BYTE      //
-                              | LL_DMA_MDATAALIGN_BYTE      //
-                              | LL_DMA_PRIORITY_LOW         //
-    );
-
-    LL_DMA_ConfigTransfer(DMA1, CHANNEL_WR,                 //
-                          LL_DMA_DIRECTION_MEMORY_TO_PERIPH //
-                              | LL_DMA_MODE_NORMAL          //
-                              | LL_DMA_PERIPH_NOINCREMENT   //
-                              | LL_DMA_MEMORY_INCREMENT     //
-                              | LL_DMA_PDATAALIGN_BYTE      //
-                              | LL_DMA_MDATAALIGN_BYTE      //
-                              | LL_DMA_PRIORITY_LOW         //
-    );
-
-    LL_DMA_SetMemoryAddress(DMA1, CHANNEL_RD, (uint32_t)BlackHole);
-    LL_DMA_SetPeriphAddress(DMA1, CHANNEL_RD, LL_SPI_DMA_GetRegAddr(SPIx));
-    LL_DMA_SetDataLength(DMA1, CHANNEL_RD, Size);
-
-    LL_DMA_SetMemoryAddress(DMA1, CHANNEL_WR, (uint32_t)Buf);
-    LL_DMA_SetPeriphAddress(DMA1, CHANNEL_WR, LL_SPI_DMA_GetRegAddr(SPIx));
-    LL_DMA_SetDataLength(DMA1, CHANNEL_WR, Size);
-
-    TC_Flag = false;
-    LL_DMA_EnableIT_TC(DMA1, CHANNEL_RD);
-    LL_DMA_EnableChannel(DMA1, CHANNEL_RD);
-    LL_DMA_EnableChannel(DMA1, CHANNEL_WR);
-
-    LL_SPI_EnableDMAReq_RX(SPIx);
-    LL_SPI_Enable(SPIx);
-    LL_SPI_EnableDMAReq_TX(SPIx);
-
-    while (!TC_Flag)
-        ;
-}
-
 static uint8_t SPI_WriteByte(uint8_t Value)
 {
     while (!LL_SPI_IsActiveFlag_TXE(SPIx))
@@ -204,6 +94,7 @@ static uint8_t SPI_WriteByte(uint8_t Value)
 static void WriteAddr(uint32_t Addr);
 static uint8_t ReadStatusReg_0();
 static void WaitWIP();
+static void delay_us(uint32_t n);
 static void WriteEnable();
 static void SectorErase(uint32_t Addr);
 static void SectorProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size);
@@ -225,16 +116,9 @@ static void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size)
     SPI_WriteByte(0x03); // Fast read
     WriteAddr(Address);
 
-    if (Size >= 16)
+    for (uint32_t i = 0; i < Size; i++)
     {
-        SPI_ReadBuf((uint8_t *)pBuffer, Size);
-    }
-    else
-    {
-        for (uint32_t i = 0; i < Size; i++)
-        {
-            ((uint8_t *)(pBuffer))[i] = SPI_WriteByte(0xff);
-        }
+        ((uint8_t *)(pBuffer))[i] = SPI_WriteByte(0xff);
     }
 
     CS_RELEASE();
@@ -247,9 +131,6 @@ void py25q16_read_page(uint32_t addr, void *buf)
 
 void py25q16_write_page(uint32_t Address, const void *pBuffer)
 {
-#ifdef DEBUG
-    printf("spi flash write: %06x %ld %d\n", Address, Size, Append);
-#endif
     uint32_t SecIndex = Address / SECTOR_SIZE;
     uint32_t SecAddr = SecIndex * SECTOR_SIZE;
     uint32_t SecOffset = Address % SECTOR_SIZE;
@@ -266,7 +147,7 @@ void py25q16_write_page(uint32_t Address, const void *pBuffer)
         SectorCacheAddr = SecAddr;
     }
 
-    if (0 != memcmp(pBuffer, (char *)SectorCache + SecOffset, SecSize))
+    if (0 != memcmp(pBuffer, SectorCache + SecOffset, SecSize))
     {
         bool Erase = false;
         for (uint32_t i = 0; i < SecSize; i++)
@@ -311,15 +192,26 @@ static uint8_t ReadStatusReg_0()
     return Value;
 }
 
+static void delay_us(uint32_t n)
+{
+    for (uint32_t i = 0; i < n; i++)
+    {
+        for (uint32_t j = 0; j < 16; j++)
+        {
+            __NOP();
+        }
+    }
+}
+
 static void WaitWIP()
 {
-    // for (int i = 0; i < 1000000; i++)
-    while (1)
+    for (int i = 0; i < 1000000; i++)
+    // while (1)
     {
         uint8_t Status = ReadStatusReg_0();
         if (1 & Status) // WIP
         {
-            // SYSTICK_DelayUs(10);
+            delay_us(10);
             continue;
         }
         break;
@@ -335,9 +227,6 @@ static void WriteEnable()
 
 static void SectorErase(uint32_t Addr)
 {
-#ifdef DEBUG
-    printf("spi flash sector erase: %06x\n", Addr);
-#endif
     WriteEnable();
     WaitWIP();
 
@@ -372,52 +261,20 @@ static void SectorProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size)
 
 static void PageProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size)
 {
-#ifdef DEBUG
-    printf("spi flash page program: %06x %ld\n", Addr, Size);
-#endif
-
     WriteEnable();
-    // WaitWIP();
+    WaitWIP();
 
     CS_ASSERT();
 
     SPI_WriteByte(0x2);
     WriteAddr(Addr);
 
-    if (Size >= 16)
+    for (uint32_t i = 0; i < Size; i++)
     {
-        SPI_WriteBuf(Buf, Size);
-    }
-    else
-    {
-        for (uint32_t i = 0; i < Size; i++)
-        {
-            SPI_WriteByte(Buf[i]);
-        }
+        SPI_WriteByte(Buf[i]);
     }
 
     CS_RELEASE();
 
     WaitWIP();
-}
-
-void DMA1_Channel4_5_6_7_IRQHandler()
-{
-    if (LL_DMA_IsActiveFlag_TC4(DMA1) && LL_DMA_IsEnabledIT_TC(DMA1, CHANNEL_RD))
-    {
-        LL_DMA_DisableIT_TC(DMA1, CHANNEL_RD);
-        LL_DMA_ClearFlag_TC4(DMA1);
-
-        while (LL_SPI_TX_FIFO_EMPTY != LL_SPI_GetTxFIFOLevel(SPIx))
-            ;
-        while (LL_SPI_IsActiveFlag_BSY(SPIx))
-            ;
-        while (LL_SPI_RX_FIFO_EMPTY != LL_SPI_GetRxFIFOLevel(SPIx))
-            ;
-
-        LL_SPI_DisableDMAReq_TX(SPIx);
-        LL_SPI_DisableDMAReq_RX(SPIx);
-
-        TC_Flag = true;
-    }
 }
