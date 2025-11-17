@@ -1,4 +1,4 @@
-#include "flash.h"
+#include "internal_flash.h"
 #include <stdbool.h>
 #include <string.h>
 #include "py32f071_ll_flash.h"
@@ -45,7 +45,7 @@ static void page_erase(uint32_t addr)
     LL_FLASH_Lock(FLASH);
 }
 
-void flash_program_page(uint32_t addr, const uint8_t *buf)
+void internal_flash_program_page(uint32_t addr, const uint8_t *buf)
 {
     // Test code
     // LL_mDelay(20);

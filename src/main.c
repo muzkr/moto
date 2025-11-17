@@ -33,7 +33,8 @@
 #include "usb_config.h"
 #include "log.h"
 #include "board.h"
-#include "fw.h"
+#include "fw_boot.h"
+#include "py25q16.h"
 
 typedef enum
 {
@@ -104,11 +105,11 @@ int main()
 
     // DFU mode -------
 
-    board_flashlight_on();
-
-    APP_USB_Init();
-
     log("start\n");
+
+    board_flashlight_on();
+    py25q16_init();
+    APP_USB_Init();
 
     // board_flashlight_flash(1000);
 

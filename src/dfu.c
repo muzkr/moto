@@ -1,37 +1,16 @@
 #include "usb_fs.h"
+#include "dfu.h"
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
 #include "main.h"
 #include "board.h"
 #include "log.h"
-#include "fat.h"
 #include "version.h"
 #include "uf2.h"
-#include "flash.h"
 #include "fw.h"
-
-// Number of pages taken by the internal firmware area
-#define FW_PAGE_NUM (FW_SIZE / FLASH_PAGE_SIZE)
-
-#define SECTOR_NUM 32000
-#define SECTOR_SIZE FAT_DEFAULT_SECTOR_SIZE
-
-#define BOOT_SECTOR 0
-#define FAT_SECTOR 1
-#define FAT_SECTOR_NUM 125
-#define ROOT_SECTOR (FAT_SECTOR + FAT_SECTOR_NUM)
-#define ROOT_SECTOR_NUM 32
-#define DATA_SECTOR (ROOT_SECTOR + ROOT_SECTOR_NUM)
-#define DATA_SECTOR_NUM (SECTOR_NUM - DATA_SECTOR)
-
-#define FAT_ENTRY_SIZE 2
-#define FAT_ENTRIES_PER_SECTOR (SECTOR_SIZE / FAT_ENTRY_SIZE)
-
-#define DIR_ENTRIES_PER_SECTOR (SECTOR_SIZE / FAT_DIR_ENTRY_SIZE)
-
-#define DATA_SECTOR_TO_FAT_ENTRY(n) (2 + (n))
-#define FAT_ENTRY_TO_SECTOR(n) ((n) / FAT_ENTRIES_PER_SECTOR)
+#include "internal_flash.h"
+#include "py25q16.h"
 
 #define _VOLUME_CREATE_DATE FAT_MK_DATE(2025, 11, 1)
 #define _VOLUME_CREATE_TIME FAT_MK_TIME(9, 0, 0)
@@ -41,24 +20,6 @@
 #define BPB_MEDIA 0xf0
 
 #define MOTO_URL "https://github.com/muzkr/moto"
-
-// Root entry assign ------
-
-#define VOLUME_LABEL_ROOT_ENTRY 0
-#define MOTO_INFO_ROOT_ENTRY 1
-#define UF2_INFO_ROOT_ENTRY 2
-#define INDEX_HTM_ROOT_ENTRY 3
-#define CURRENT_UF2_ROOT_ENTRY 4
-
-// Data sectors assign -----
-
-#define MOTO_INFO_SECTOR 0             // Data sector of MOTO.TXT
-#define UF2_INFO_SECTOR 1              // Data sector of INFO_UF2.TXT
-#define INDEX_HTM_SECTOR 2             // First data sector of INDEX.HTM
-#define CURRENT_UF2_SECTOR 3           // First data sector of CURRENT.UF2
-#define CURRENT_UF2_SECTOR_NUM_MAX 472 // Max number of data sectors of CURRENT.UF2
-
-static_assert(FW_PAGE_NUM <= CURRENT_UF2_SECTOR_NUM_MAX);
 
 // ------------
 
@@ -187,61 +148,62 @@ static const fat_dir_entry_t CURRENT_UF2_dir_entry = {
     .last_access_date = _VOLUME_CREATE_DATE,
 };
 
+// DATA.UF2 ---------
+
+static_assert(PY25Q16_PAGE_SIZE == FLASH_PAGE_SIZE);
+
+#define DATA_UF2_FAT_ENTRY_FIRST DATA_SECTOR_TO_FAT_ENTRY(DATA_UF2_SECTOR)
+#define DATA_UF2_FAT_ENTRY_LAST (DATA_UF2_FAT_ENTRY_FIRST + DATA_UF2_SECTOR_NUM)
+
+static const fat_dir_entry_t DATA_UF2_dir_entry = {
+    .name = "DATA    UF2",
+    .attr = FAT_DIR_ATTR_RO,
+    .first_clusterLO = DATA_UF2_FAT_ENTRY_FIRST,
+    .file_size = PY25Q16_PAGE_NUM * SECTOR_SIZE,
+    .create_date = _VOLUME_CREATE_DATE,
+    .create_time = _VOLUME_CREATE_TIME,
+    .write_date = _VOLUME_CREATE_DATE,
+    .write_time = _VOLUME_CREATE_TIME,
+    .last_access_date = _VOLUME_CREATE_DATE,
+};
+
 // ---------------
 
-static struct
+static void on_sector_read_FAT(uint32_t sector, uint8_t *buf, uint32_t entry_first, uint32_t entry_num)
 {
-    uint8_t in_progress;
-    uint8_t num_blocks;
-} fw_program_state = {0};
+    const uint32_t entry_last = entry_first + entry_num;
 
-static uint8_t fw_program_map[FW_PAGE_NUM];
-
-static bool check_fw_block(const uf2_block_t *block)
-{
-    if (UF2_FLAG_NOFLASH & block->flags)
+    if (sector < FAT_ENTRY_TO_SECTOR(entry_first))
     {
-        return false;
+        return;
     }
-    if (FLASH_PAGE_SIZE != block->payload_size)
+    if (sector > FAT_ENTRY_TO_SECTOR(entry_last - 1))
     {
-        return false;
-    }
-    if (0 != block->target_addr % FLASH_PAGE_SIZE)
-    {
-        return false;
-    }
-    if (block->target_addr < FW_ADDR || block->target_addr >= (FW_ADDR + FW_SIZE))
-    {
-        return false;
-    }
-    if (block->num_blocks > FW_PAGE_NUM)
-    {
-        return false;
-    }
-    if (block->block_no >= block->num_blocks)
-    {
-        return false;
+        return;
     }
 
-    return true;
-}
+    for (uint32_t i = 0; i < FAT_ENTRIES_PER_SECTOR; i++)
+    {
+        const uint32_t entry = sector * FAT_ENTRIES_PER_SECTOR + i;
 
-static bool fw_program_finished()
-{
-    if (!fw_program_state.in_progress)
-    {
-        return false;
-    }
-    for (uint32_t i = 0; i < fw_program_state.num_blocks; i++)
-    {
-        if (!fw_program_map[i])
+        if (entry < entry_first)
         {
-            return false;
+            continue;
         }
-    }
+        if (entry >= entry_last)
+        {
+            break;
+        }
 
-    return true;
+        if (entry_last - 1 == entry)
+        {
+            fat_set_word(buf + FAT_ENTRY_SIZE * i, FAT16_ENTRY_EOF);
+        }
+        else
+        {
+            fat_set_word(buf + FAT_ENTRY_SIZE * i, 1 + entry);
+        }
+    } // for
 }
 
 // ---------------
@@ -304,45 +266,9 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
         }
 
         // CURRENT.UF2
-        do
-        {
-            if (sector < FAT_ENTRY_TO_SECTOR(CURRENT_UF2_FAT_ENTRY_FIRST))
-            {
-                break;
-            }
-            if (sector > FAT_ENTRY_TO_SECTOR(CURRENT_UF2_FAT_ENTRY_LAST - 1))
-            {
-                break;
-            }
-
-            // log("CURRENT.UF2 FAT: %d, %d, %d\n", sector, CURRENT_UF2_FAT_ENTRY_FIRST, CURRENT_UF2_FAT_ENTRY_LAST);
-
-            for (uint32_t i = 0; i < FAT_ENTRIES_PER_SECTOR; i++)
-            {
-                const uint32_t entry = sector * FAT_ENTRIES_PER_SECTOR + i;
-
-                if (entry < CURRENT_UF2_FAT_ENTRY_FIRST)
-                {
-                    continue;
-                }
-                if (entry >= CURRENT_UF2_FAT_ENTRY_LAST)
-                {
-                    break;
-                }
-
-                if (CURRENT_UF2_FAT_ENTRY_LAST - 1 == entry)
-                {
-                    // log("CURRENT.UF2 last FAT entry: %d, %d\n", sector, entry);
-                    fat_set_word(buf + FAT_ENTRY_SIZE * i, FAT16_ENTRY_EOF);
-                }
-                else
-                {
-                    // log("CURRENT.UF2 FAT entry: %d, %d\n", sector, entry);
-                    fat_set_word(buf + FAT_ENTRY_SIZE * i, 1 + entry);
-                }
-            } // for
-
-        } while (0);
+        on_sector_read_FAT(sector, buf, CURRENT_UF2_FAT_ENTRY_FIRST, FW_PAGE_NUM);
+        // DATA.UF2
+        on_sector_read_FAT(sector, buf, DATA_UF2_FAT_ENTRY_FIRST, PY25Q16_PAGE_NUM);
     }
     else if (sector < DATA_SECTOR)
     {
@@ -362,6 +288,8 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             memcpy(buf + FAT_DIR_ENTRY_SIZE * INDEX_HTM_ROOT_ENTRY, &INDEX_HTM_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
             // CURRENT.UF2
             memcpy(buf + FAT_DIR_ENTRY_SIZE * CURRENT_UF2_ROOT_ENTRY, &CURRENT_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
+            // DATA.UF2
+            memcpy(buf + FAT_DIR_ENTRY_SIZE * DATA_UF2_ROOT_ENTRY, &DATA_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
         }
     }
     else if (sector < SECTOR_NUM)
@@ -400,71 +328,22 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             block->num_blocks = FW_PAGE_NUM;
             block->magic_end = UF2_MAGIC_END;
         }
+        // DATA.UF2
+        else if (DATA_UF2_SECTOR <= sector && sector < DATA_UF2_SECTOR + PY25Q16_PAGE_NUM)
+        {
+            const uint32_t data_addr = FLASH_PAGE_SIZE * (sector - DATA_UF2_SECTOR);
+            uf2_block_t *block = (uf2_block_t *)buf;
+            py25q16_read(data_addr, block->data, FLASH_PAGE_SIZE);
+
+            block->magic_start0 = UF2_MAGIC_START0;
+            block->magic_start1 = UF2_MAGIC_START1;
+            block->target_addr = data_addr;
+            block->payload_size = FLASH_PAGE_SIZE;
+            block->block_no = sector - CURRENT_UF2_SECTOR;
+            block->num_blocks = FW_PAGE_NUM;
+            block->magic_end = UF2_MAGIC_END;
+        }
     }
-
-    return 0;
-}
-
-int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
-{
-    // log("sector_write: %d, %08x, %d\n", sector, (uint32_t)buf, size);
-
-    if (SECTOR_SIZE != size)
-    {
-        log("sector_write: %d, %08x, %d\n", sector, (uint32_t)buf, size);
-        return 1;
-    }
-    if (0 != ((uint32_t)buf) % 4)
-    {
-        log("sector_write: %d, %08x, %d\n", sector, (uint32_t)buf, size);
-        return 1;
-    }
-
-    // FW program
-    do
-    {
-        const uf2_block_t *block = (uf2_block_t *)buf;
-
-        if (UF2_MAGIC_START0 != block->magic_start0 || UF2_MAGIC_START1 != block->magic_start1)
-        {
-            break;
-        }
-        if (!check_fw_block(block))
-        {
-            break;
-        }
-
-        if (!fw_program_state.in_progress)
-        {
-            fw_program_state.in_progress = true;
-            fw_program_state.num_blocks = block->num_blocks;
-            memset(fw_program_map, 0, sizeof(fw_program_map));
-            board_flashlight_flash(100);
-            log("fw program start: %d\n", block->num_blocks);
-        }
-        else
-        {
-            if (fw_program_map[block->block_no])
-            {
-                // Repeated
-                log("fw program repeat\n");
-                break;
-            }
-        }
-
-        log("fw program: %d, %08x\n", block->block_no, block->target_addr);
-
-        flash_program_page(block->target_addr, block->data);
-        fw_program_map[block->block_no] = true;
-
-        if (fw_program_finished())
-        {
-            log("fw program finished\n");
-            board_flashlight_on();
-            main_schedule_reset(500);
-        }
-
-    } while (0);
 
     return 0;
 }

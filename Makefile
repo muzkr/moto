@@ -31,8 +31,11 @@ src/main.c \
 src/board.c \
 src/usbd_msc_impl.c \
 src/dfu.c \
-src/flash.c \
-src/fw.c \
+src/dfu_write.c \
+src/internal_flash.c \
+src/fw_boot.c \
+src/py25q16.c \
+src/flash_programmer.c \
 src/py32f071_it.c \
 src/system_py32f071.c \
 lib/Middlewares/CherryUSB/core/usbd_core.c \
@@ -42,6 +45,7 @@ lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_dma.c \
 lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_gpio.c \
 lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_rcc.c \
 lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_pwr.c \
+lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_spi.c \
 lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_usart.c \
 lib/Drivers/PY32F071_HAL_Driver/Src/py32f071_ll_utils.c
 

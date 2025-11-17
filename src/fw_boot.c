@@ -1,5 +1,8 @@
+#include "fw_boot.h"
+#include <stdint.h>
 #include "fw.h"
 #include "log.h"
+#include "py32f0xx.h"
 
 void fw_boot()
 {
