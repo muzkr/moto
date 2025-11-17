@@ -224,7 +224,7 @@ static void APP_USB_Init()
     msc_ram_init();
 
     /* Enable USB interrupt */
-    NVIC_SetPriority(USBD_IRQn, 1);
+    NVIC_SetPriority(USBD_IRQn, 3);
     NVIC_EnableIRQ(USBD_IRQn);
 }
 
@@ -278,7 +278,7 @@ static void APP_SystemClockConfig()
     }
 
     /* Configure APB1 prescaler and initialize */
-    LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2);
+    LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
     // LL_Init1msTick(48000000);
 
     /* Update system clock global variable SystemCoreClock (can also be updated by calling SystemCoreClockUpdate function) */

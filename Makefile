@@ -2,7 +2,7 @@
 PROJECT = moto
 
 ENABLE_LOGGING ?= 0
-VERSION_STRING ?= 1.0.2
+VERSION_STRING ?= 1.1.0
 
 
 TARGET = $(PROJECT)_$(VERSION_STRING)
@@ -29,12 +29,12 @@ BUILD_DIR = build
 C_SOURCES = \
 src/main.c \
 src/board.c \
-src/usbd_msc_impl.c \
 src/dfu.c \
 src/dfu_write.c \
 src/internal_flash.c \
 src/fw_boot.c \
 src/py25q16.c \
+src/usbd_msc_impl.c \
 src/py32f071_it.c \
 src/system_py32f071.c \
 lib/Middlewares/CherryUSB/core/usbd_core.c \

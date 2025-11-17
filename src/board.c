@@ -23,34 +23,47 @@
 // PC13: Flashlight
 #define FLASHLIGHT_PIN MK_PIN(GPIOC, LL_GPIO_PIN_13)
 
+// PA3: SPI flash CS
+#define SPI_FLASH_CS_PIN MK_PIN(GPIOA, LL_GPIO_PIN_3)
+
 void board_init()
 {
-    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOB);
-    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOC);
+    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA | LL_IOP_GRP1_PERIPH_GPIOB | LL_IOP_GRP1_PERIPH_GPIOC);
 
     RESET_OUTPUT_PIN(FLASHLIGHT_PIN);
     SET_OUTPUT_PIN(KEYPAD_COL1_PIN);
+    SET_OUTPUT_PIN(SPI_FLASH_CS_PIN);
 
     LL_GPIO_InitTypeDef InitStruct = {0};
     InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
     InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
     InitStruct.Pull = LL_GPIO_PULL_UP;
 
+    // Input ----------
+
+    InitStruct.Mode = LL_GPIO_MODE_INPUT;
+
     // PTT & keypad rows
     InitStruct.Pin = GET_PIN_MASK(PTT_PIN) | GET_PIN_MASK(KEYPAD_ROW1_PIN) | GET_PIN_MASK(KEYPAD_ROW2_PIN);
-    InitStruct.Mode = LL_GPIO_MODE_INPUT;
     LL_GPIO_Init(GPIOB, &InitStruct);
     // LL_GPIO_SetPinPull(GET_PORT(KEYPAD_ROW1_PIN), GET_PIN_MASK(KEYPAD_ROW1_PIN), LL_GPIO_PULL_NO);
 
+    // Output -----
+
+    InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+
     // Keypad col 1
     InitStruct.Pin = GET_PIN_MASK(KEYPAD_COL1_PIN);
-    InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
     LL_GPIO_Init(GPIOB, &InitStruct);
 
     // Flashlight
-    InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
     InitStruct.Pin = GET_PIN_MASK(FLASHLIGHT_PIN);
     LL_GPIO_Init(GPIOC, &InitStruct);
+
+    // SPI flash CS
+    InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+    InitStruct.Pin = GET_PIN_MASK(SPI_FLASH_CS_PIN);
+    LL_GPIO_Init(GPIOA, &InitStruct);
 }
 
 // Keypad ------

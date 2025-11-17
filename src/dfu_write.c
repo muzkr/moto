@@ -75,7 +75,7 @@ static bool accept_first_block(const uf2_block_t *block)
 
         program_state.base_addr = base_addr;
         program_state.num_pages = PY25Q16_PAGE_NUM_MAX;
-        program_state.program_page_func = py25q16_write_page;
+        program_state.program_page_func = (program_page_func_t)py25q16_write_page;
         program_state.num_blocks = block->num_blocks;
         return true;
     }

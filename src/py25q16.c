@@ -202,7 +202,7 @@ static uint8_t SPI_WriteByte(uint8_t Value)
 }
 
 static void WriteAddr(uint32_t Addr);
-static uint8_t ReadStatusReg(uint32_t Which);
+static uint8_t ReadStatusReg_0();
 static void WaitWIP();
 static void WriteEnable();
 static void SectorErase(uint32_t Addr);
