@@ -35,8 +35,7 @@
 
 static uint32_t SectorCacheAddr = 0x1000000;
 static uint8_t SectorCache[SECTOR_SIZE];
-static uint8_t BlackHole[1];
-static volatile bool TC_Flag;
+// static uint8_t BlackHole[1];
 
 static void SPI_Init()
 {
@@ -98,7 +97,7 @@ static void delay_us(uint32_t n);
 static void WriteEnable();
 static void SectorErase(uint32_t Addr);
 static void SectorProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size);
-static void PageProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size);
+static void PageProgram(uint32_t Addr, const uint8_t *Buf);
 
 void py25q16_init()
 {
@@ -134,12 +133,7 @@ void py25q16_write_page(uint32_t Address, const void *pBuffer)
     uint32_t SecIndex = Address / SECTOR_SIZE;
     uint32_t SecAddr = SecIndex * SECTOR_SIZE;
     uint32_t SecOffset = Address % SECTOR_SIZE;
-    uint32_t SecSize = SECTOR_SIZE - SecOffset;
-
-    if (SecSize > PY25Q16_PAGE_SIZE)
-    {
-        SecSize = PY25Q16_PAGE_SIZE;
-    }
+    uint32_t SecSize = PY25Q16_PAGE_SIZE;
 
     if (SecAddr != SectorCacheAddr)
     {
@@ -205,13 +199,13 @@ static void delay_us(uint32_t n)
 
 static void WaitWIP()
 {
-    for (int i = 0; i < 1000000; i++)
-    // while (1)
+    // for (int i = 0; i < 1000000; i++)
+    while (1)
     {
         uint8_t Status = ReadStatusReg_0();
         if (1 & Status) // WIP
         {
-            delay_us(10);
+            // delay_us(10);
             continue;
         }
         break;
@@ -240,26 +234,16 @@ static void SectorErase(uint32_t Addr)
 
 static void SectorProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size)
 {
-    uint32_t Size1 = PY25Q16_PAGE_SIZE - (Addr % PY25Q16_PAGE_SIZE);
-
     while (Size)
     {
-        if (Size < Size1)
-        {
-            Size1 = Size;
-        }
-
-        PageProgram(Addr, Buf, Size1);
-
-        Addr += Size1;
-        Buf += Size1;
-        Size -= Size1;
-
-        Size1 = PY25Q16_PAGE_SIZE;
+        PageProgram(Addr, Buf);
+        Addr += PY25Q16_PAGE_SIZE;
+        Buf += PY25Q16_PAGE_SIZE;
+        Size -= PY25Q16_PAGE_SIZE;
     }
 }
 
-static void PageProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size)
+static void PageProgram(uint32_t Addr, const uint8_t *Buf)
 {
     WriteEnable();
     WaitWIP();
@@ -269,7 +253,7 @@ static void PageProgram(uint32_t Addr, const uint8_t *Buf, uint32_t Size)
     SPI_WriteByte(0x2);
     WriteAddr(Addr);
 
-    for (uint32_t i = 0; i < Size; i++)
+    for (uint32_t i = 0; i < PY25Q16_PAGE_SIZE; i++)
     {
         SPI_WriteByte(Buf[i]);
     }
