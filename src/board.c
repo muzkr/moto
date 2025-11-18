@@ -28,6 +28,11 @@
 // PA3: SPI flash CS
 #define SPI_FLASH_CS_PIN MK_PIN(GPIOA, LL_GPIO_PIN_3)
 
+// PB2: LCD CS
+#define LCD_CS_PIN MK_PIN(GPIOB, LL_GPIO_PIN_2)
+// PA6: LCD A0
+#define LCD_A0_PIN MK_PIN(GPIOA, LL_GPIO_PIN_6)
+
 void board_init()
 {
     // LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA | LL_IOP_GRP1_PERIPH_GPIOB | LL_IOP_GRP1_PERIPH_GPIOC);
@@ -36,6 +41,7 @@ void board_init()
     RESET_OUTPUT_PIN(FLASHLIGHT_PIN);
     SET_OUTPUT_PIN(KEYPAD_COL1_PIN);
     SET_OUTPUT_PIN(SPI_FLASH_CS_PIN);
+    SET_OUTPUT_PIN(LCD_CS_PIN);
 
     LL_GPIO_InitTypeDef InitStruct = {0};
     InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
@@ -54,9 +60,11 @@ void board_init()
     // Output -----
 
     InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+    InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
 
     // Keypad col 1
-    InitStruct.Pin = GET_PIN_MASK(KEYPAD_COL1_PIN);
+    // LCD CS
+    InitStruct.Pin = GET_PIN_MASK(KEYPAD_COL1_PIN) | GET_PIN_MASK(LCD_CS_PIN);
     LL_GPIO_Init(GPIOB, &InitStruct);
 
     // Flashlight
@@ -64,8 +72,8 @@ void board_init()
     LL_GPIO_Init(GET_PORT(FLASHLIGHT_PIN), &InitStruct);
 
     // SPI flash CS
-    InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
-    InitStruct.Pin = GET_PIN_MASK(SPI_FLASH_CS_PIN);
+    // LCD A0
+    InitStruct.Pin = GET_PIN_MASK(SPI_FLASH_CS_PIN) | GET_PIN_MASK(LCD_A0_PIN);
     LL_GPIO_Init(GPIOA, &InitStruct);
 }
 

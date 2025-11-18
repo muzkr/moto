@@ -35,6 +35,7 @@
 #include "board.h"
 #include "fw_boot.h"
 #include "py25q16.h"
+#include "lcd.h"
 
 typedef enum
 {
@@ -107,6 +108,9 @@ int main()
 
     log("start\n");
 
+    lcd_init();
+    lcd_display_logo();
+
     board_flashlight_on();
     // board_flashlight_flash(1000);
     py25q16_init();
@@ -129,6 +133,7 @@ int main()
 #if defined(ENABLE_LOGGING)
         APP_DumpLog();
 #endif
+        // lcd_display_logo();
     }
 }
 

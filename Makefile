@@ -34,6 +34,7 @@ src/dfu_write.c \
 src/internal_flash.c \
 src/fw_boot.c \
 src/py25q16.c \
+src/lcd.c \
 src/usbd_msc_impl.c \
 src/py32f071_it.c \
 src/system_py32f071.c \
