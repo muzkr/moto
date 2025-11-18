@@ -85,7 +85,7 @@ const uint8_t msc_flash_descriptor[] = {
 
 void usbd_configure_done_callback(void)
 {
-    /* do nothing */
+    usb_fs_configure_done();
 }
 
 void usbd_msc_get_cap(uint8_t lun, uint32_t *block_num, uint16_t *block_size)

@@ -219,7 +219,7 @@ void ST7565_Init(void)
 
     CS_Release();
 
-    // ST7565_FillScreen(0x00);
+    ST7565_FillScreen(0x00);
 }
 
 static const uint8_t M[] = {0xFC, 0xFC, 0x18, 0x70, 0x18, 0xFC, 0xFC, /*0x00,*/ 0x0F, 0x0F, 0x00, 0x00, 0x00, 0x0F, 0x0F};
@@ -235,6 +235,11 @@ static const uint8_t *LOGO[] = {M, O, T, O};
 void lcd_init()
 {
     ST7565_Init();
+}
+
+void lcd_clear()
+{
+    ST7565_FillScreen(0);
 }
 
 void lcd_display_logo()

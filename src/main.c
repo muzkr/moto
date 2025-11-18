@@ -73,7 +73,7 @@ void main_schedule_reset(uint32_t delay)
 void SysTick_Handler(void)
 {
     timestamp++;
-    board_flashlight_update();
+    board_backlight_update();
 }
 
 /**
@@ -111,19 +111,17 @@ int main()
     lcd_init();
     lcd_display_logo();
 
-    board_flashlight_on();
-    // board_flashlight_flash(1000);
+    board_backlight_on(BOARD_DEFAULT_BACKLIGHT_DELAY);
     py25q16_init();
     APP_USB_Init();
-
-    // board_flashlight_flash(1000);
 
     while (1)
     {
         if (schedule_reset_delay)
         {
             LL_mDelay(schedule_reset_delay);
-            board_flashlight_off();
+            board_backlight_off();
+            lcd_clear();
             NVIC_SystemReset();
             while (1)
             {

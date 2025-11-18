@@ -208,6 +208,11 @@ static void on_sector_read_FAT(uint32_t sector, uint8_t *buf, uint32_t entry_fir
 
 // ---------------
 
+void usb_fs_configure_done()
+{
+    board_backlight_on(BOARD_DEFAULT_BACKLIGHT_DELAY);
+}
+
 void usb_fs_get_cap(uint32_t *sector_num, uint16_t *sector_size)
 {
     log("get_cap\n");

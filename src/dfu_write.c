@@ -136,7 +136,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
                 log("program start: %d\n", block->num_blocks);
                 program_state.in_progress = true;
                 memset(block_map, 0, block->num_blocks);
-                board_flashlight_flash(50);
+                board_backlight_flash(50);
             }
             else
             {
@@ -168,8 +168,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         if (program_finished())
         {
             log("program finished\n");
-            // board_flashlight_flash(1000);
-            board_flashlight_on();
+            board_backlight_on(BOARD_DEFAULT_BACKLIGHT_DELAY);
 
             if (FW_ADDR == program_state.base_addr)
             {
