@@ -107,8 +107,8 @@ int main()
 
     log("start\n");
 
-    // board_flashlight_on();
-    board_flashlight_flash(1000);
+    board_flashlight_on();
+    // board_flashlight_flash(1000);
     py25q16_init();
     APP_USB_Init();
 

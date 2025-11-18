@@ -168,7 +168,8 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         if (program_finished())
         {
             log("program finished\n");
-            board_flashlight_flash(1000);
+            // board_flashlight_flash(1000);
+            board_flashlight_on();
 
             if (FW_ADDR == program_state.base_addr)
             {
