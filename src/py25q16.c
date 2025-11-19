@@ -105,7 +105,7 @@ void py25q16_init()
     SPI_Init();
 }
 
-static void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size)
+static void py25q16_read(uint32_t Address, uint8_t *pBuffer, uint32_t Size)
 {
 #ifdef DEBUG
     printf("spi flash read: %06x %ld\n", Address, Size);
@@ -117,18 +117,18 @@ static void py25q16_read(uint32_t Address, void *pBuffer, uint32_t Size)
 
     for (uint32_t i = 0; i < Size; i++)
     {
-        ((uint8_t *)(pBuffer))[i] = SPI_WriteByte(0xff);
+        pBuffer[i] = SPI_WriteByte(0xff);
     }
 
     CS_RELEASE();
 }
 
-void py25q16_read_page(uint32_t addr, void *buf)
+void py25q16_read_page(uint32_t addr, uint8_t *buf)
 {
     py25q16_read(addr, buf, PY25Q16_PAGE_SIZE);
 }
 
-void py25q16_write_page(uint32_t Address, const void *pBuffer)
+void py25q16_write_page(uint32_t Address, const uint8_t *pBuffer)
 {
     uint32_t SecIndex = Address / SECTOR_SIZE;
     uint32_t SecAddr = SecIndex * SECTOR_SIZE;

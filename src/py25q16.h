@@ -27,7 +27,7 @@
 #define PY25Q16_BASE_ADDR 0
 
 void py25q16_init();
-void py25q16_read_page(uint32_t Address, void *pBuffer);
-void py25q16_write_page(uint32_t Address, const void *pBuffer);
+void py25q16_read_page(uint32_t addr, uint8_t *buf);
+void py25q16_write_page(uint32_t addr, const uint8_t *buf);
 
 #endif

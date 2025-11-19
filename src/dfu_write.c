@@ -9,12 +9,16 @@
 #include "log.h"
 
 #define PAGE_SIZE 256
-#define PY25Q16_PAGE_NUM_MAX 1024
-#define PY25Q16_SIZE_MAX (PAGE_SIZE * PY25Q16_PAGE_NUM_MAX)
+#define MAX_BLOCKS 1024 // Support 256 KB of payload data
 
 typedef void (*program_page_func_t)(uint32_t addr, const uint8_t *buf);
 
-static uint8_t block_map[PY25Q16_PAGE_NUM_MAX > FW_PAGE_NUM ? PY25Q16_PAGE_NUM_MAX : FW_PAGE_NUM] = {0};
+enum
+{
+    IGNORE_BLOCK,
+    ACCEPT_BLOCK,
+    REJECT_BLOCK,
+};
 
 static struct
 {
@@ -25,39 +29,45 @@ static struct
     uint8_t in_progress;
 } program_state = {0};
 
-static bool check_block(const uf2_block_t *block)
+static uint8_t block_map[MAX_BLOCKS] = {0};
+
+static uint32_t check_block(const uf2_block_t *block)
 {
     if (UF2_MAGIC_START0 != block->magic_start0 || UF2_MAGIC_START1 != block->magic_start1)
     {
-        return false;
+        return IGNORE_BLOCK;
     }
     if (UF2_FLAG_NOFLASH & block->flags)
     {
-        return false;
+        return IGNORE_BLOCK;
     }
+
     // Allow less than one page
     if (0 == block->payload_size)
     {
-        return false;
+        return IGNORE_BLOCK;
     }
-    if (block->payload_size > FLASH_PAGE_SIZE)
+    else if (block->payload_size > FLASH_PAGE_SIZE)
     {
-        return false;
-    }
-    if (0 != block->target_addr % FLASH_PAGE_SIZE)
-    {
-        return false;
-    }
-    if (0 == block->num_blocks)
-    {
-        return false;
-    }
-    if (block->block_no >= block->num_blocks)
-    {
-        return false;
+        return REJECT_BLOCK;
     }
 
-    return true;
+    if (0 != block->target_addr % FLASH_PAGE_SIZE)
+    {
+        return REJECT_BLOCK;
+    }
+
+    if (block->num_blocks > MAX_BLOCKS)
+    {
+        return REJECT_BLOCK;
+    }
+
+    if (block->block_no >= block->num_blocks)
+    {
+        return REJECT_BLOCK;
+    }
+
+    return ACCEPT_BLOCK;
 }
 
 static bool accept_first_block(const uf2_block_t *block)
@@ -68,20 +78,17 @@ static bool accept_first_block(const uf2_block_t *block)
     {
         program_state.base_addr = FW_ADDR;
         program_state.num_pages = FW_PAGE_NUM;
-        program_state.program_page_func = internal_flash_program_page;
         program_state.num_blocks = block->num_blocks;
+        program_state.program_page_func = internal_flash_program_page;
         return true;
     }
 
     if (PY25Q16_BASE_ADDR <= target_addr && target_addr < PY25Q16_BASE_ADDR + PY25Q16_SIZE)
     {
-        uint32_t i = (target_addr - PY25Q16_BASE_ADDR) / PY25Q16_SIZE_MAX;
-        uint32_t base_addr = PY25Q16_BASE_ADDR + i * PY25Q16_SIZE_MAX;
-
-        program_state.base_addr = base_addr;
-        program_state.num_pages = PY25Q16_PAGE_NUM_MAX;
-        program_state.program_page_func = (program_page_func_t)py25q16_write_page;
+        program_state.base_addr = PY25Q16_BASE_ADDR;
+        program_state.num_pages = PY25Q16_PAGE_NUM;
         program_state.num_blocks = block->num_blocks;
+        program_state.program_page_func = (program_page_func_t)py25q16_write_page;
         return true;
     }
 
@@ -120,13 +127,20 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         return 1;
     }
 
+    // UF2 block
     do
     {
         const uf2_block_t *block = (uf2_block_t *)buf;
-        if (!check_block(block))
+
+        uint32_t check_res = check_block(block);
+        if (IGNORE_BLOCK == check_res)
         {
             log("invalid block ignored\n");
             break;
+        }
+        if (REJECT_BLOCK == check_res)
+        {
+            return 1; // Raise error
         }
 
         if (!program_state.in_progress)
