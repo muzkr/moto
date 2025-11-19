@@ -8,6 +8,8 @@ Features:
 
 - Compliant with the [UF2](https://github.com/microsoft/uf2) bootloader specification
 - Mounts the radio as a USB disk to provide a drag-and-drop user experience
+- Replace the stock bootloader without requiring any firmware modifications
+- The same simple drag-and-drop method for upgrading or restoring the stock bootloader
 - Firmware readout and flashing
 - Data storage (SPI flash) read and write
 - FAT file system
