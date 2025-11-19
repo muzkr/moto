@@ -83,7 +83,7 @@ static const fat_dir_entry_t MOTO_INFO_DIR_ENTRY = {
 static const char UF2_INFO_CONTENT[] =         //
     "UF2 Bootloader Moto-" MOTO_VERSION "\r\n" //
     "Model: Moto Bootloader\r\n"               //
-    "Board-ID: UVK5-V3-variants\r\n"           //
+    "Board-ID: PY32F071-UVK5-V3\r\n"           //
     ;
 
 #define UF2_INFO_CONTENT_SIZE (sizeof(UF2_INFO_CONTENT) - 1)
