@@ -6,7 +6,7 @@ It mounts the radio as a USB disk on a computer, providing a drag-and-drop user 
 
 Features: 
 
-- Compliant with the [UF2](https://github.com/microsoft/uf2) bootloader standard
+- Compliant with the [UF2](https://github.com/microsoft/uf2) bootloader specification
 - Mounts the radio as a USB disk to provide a drag-and-drop user experience
 - Firmware readout and flashing
 - Data storage (SPI flash) read and write
