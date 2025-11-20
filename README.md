@@ -8,7 +8,6 @@ Features:
 
 - Compliant with the [UF2](https://github.com/microsoft/uf2) bootloader specification
 - Mounts the radio as a USB disk to provide a drag-and-drop user experience
-- The same simple drag-and-drop method for upgrading or restoring the stock bootloader
 - Firmware readout and flashing
 - Data storage (SPI flash) read and write
 - FAT file system
@@ -18,12 +17,15 @@ Features:
 ## Usage
 
 > [!CAUTION]
-> Although Moto makes updating firmware and data very simple, it is a powerful tool and careless or improper handling can lead to catastrophic consequences, such as data corruption including calibration data. This data is unique to each device and, once lost, is almost impossible to recover. No one other than the user themselves — including the author of Moto — shall be held responsible for any consequences.
+> <span style="text-transform: uppercase; ">After installing Moto, the stock firmware will not function, even if you later restore the stock bootloader. If you ever need to run stock firmware in the future, do not install Moto!</span>
 
-Moto will replace the original bootloader, so special tools are required to flash it to the radio. It is recommended to use [Ichi](https://github.com/muzkr/ichi), a sister project specifically designed for updating bootloaders.
+> [!CAUTION]
+> Moto is easy-to-use yet very powerful! Careless or improper handling can lead to catastrophic consequences, such as data corruption including calibration data. No one other than the user themselves — including the author of Moto — shall be held responsible for any consequences.
 
 > [!WARNING]
-> Updating the bootloader is a risky operation. An incomplete update may render the device unable to boot again. No one other than the user themselves — including the author of Moto or Ichi — shall be held responsible for any consequences.
+> Updating the bootloader is a risky operation. An incomplete update may render the device unable to boot again. No one other than the user themselves shall be held responsible for any consequences.
+
+Moto will replace the original bootloader, so special tools are required to flash it to the radio. It is recommended to use [Ichi](https://github.com/muzkr/ichi), a sister project specifically designed for updating bootloaders.
 
 Just like with the stock bootloader, holding down the PTT button while powering on the device will enter Moto's DFU mode. 
 
@@ -34,9 +36,12 @@ Connect the device to your computer using a USB Type-C cable. A disk drive label
 
 You can copy these files to a safe place as backups.
 
-Moto supports writing (flashing) firmware or data in the UF2 format. To update the firmware or SPI flash, prepare a UF2 file, copy it to the MOTO disk, and Moto will then write the data to the internal or SPI flash based on the UF2 metadata. 
+To update (flash) firmware or SPI flash data, simply copy the firmware or data file in UF2 format to the MOTO disk, and Moto will do the rest. 
 
 For detailed instructions, please refer to the [wiki](https://github.com/muzkr/moto/wiki).
+
+> [!IMPORTANT]
+> Please be sure to carefully read the wiki content to gain an understanding of the underlying mechanisms, common operational instructions, and caveats about pitfalls to avoid.
 
 ## License
 
