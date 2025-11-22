@@ -34,7 +34,6 @@
 #include "log.h"
 #include "board.h"
 #include "fw_boot.h"
-#include "py25q16.h"
 #include "lcd.h"
 
 typedef enum
@@ -112,7 +111,6 @@ int main()
     lcd_display_logo();
 
     board_backlight_on(BOARD_DEFAULT_BACKLIGHT_DELAY);
-    py25q16_init();
     APP_USB_Init();
 
     while (1)
@@ -131,7 +129,6 @@ int main()
 #if defined(ENABLE_LOGGING)
         APP_DumpLog();
 #endif
-        // lcd_display_logo();
     }
 }
 

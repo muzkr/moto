@@ -53,7 +53,7 @@ const uint8_t msc_flash_descriptor[] = {
     ///////////////////////////////////////
     /// string3 descriptor
     ///////////////////////////////////////
-    0x16,                       /* bLength */
+    0x12,                       /* bLength */
     USB_DESCRIPTOR_TYPE_STRING, /* bDescriptorType */
     '7', 0x00,                  /* wcChar0 */
     'd', 0x00,                  /* wcChar1 */
@@ -63,8 +63,6 @@ const uint8_t msc_flash_descriptor[] = {
     '6', 0x00,                  /* wcChar5 */
     'e', 0x00,                  /* wcChar6 */
     'f', 0x00,                  /* wcChar7 */
-    '0', 0x00,                  /* wcChar8 */
-    '1', 0x00,                  /* wcChar9 */
 #ifdef CONFIG_USB_HS
     ///////////////////////////////////////
     /// device qualifier descriptor

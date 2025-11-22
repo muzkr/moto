@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define BOARD_DEFAULT_BACKLIGHT_DELAY 15000 // 15 sec
+#define BOARD_DEFAULT_BACKLIGHT_DELAY 20000 // in ms
 
 void board_init();
 

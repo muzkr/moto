@@ -10,7 +10,6 @@
 #include "uf2.h"
 #include "fw.h"
 #include "internal_flash.h"
-#include "py25q16.h"
 
 #define _VOLUME_CREATE_DATE FAT_MK_DATE(2025, 11, 1)
 #define _VOLUME_CREATE_TIME FAT_MK_TIME(9, 0, 0)
@@ -148,25 +147,6 @@ static const fat_dir_entry_t CURRENT_UF2_dir_entry = {
     .last_access_date = _VOLUME_CREATE_DATE,
 };
 
-// DATA.UF2 ---------
-
-static_assert(PY25Q16_PAGE_SIZE == FLASH_PAGE_SIZE);
-
-#define DATA_UF2_FAT_ENTRY_FIRST DATA_SECTOR_TO_FAT_ENTRY(DATA_UF2_SECTOR)
-#define DATA_UF2_FAT_ENTRY_LAST (DATA_UF2_FAT_ENTRY_FIRST + DATA_UF2_SECTOR_NUM)
-
-static const fat_dir_entry_t DATA_UF2_dir_entry = {
-    .name = "DATA    UF2",
-    .attr = FAT_DIR_ATTR_RO,
-    .first_clusterLO = DATA_UF2_FAT_ENTRY_FIRST,
-    .file_size = PY25Q16_PAGE_NUM * SECTOR_SIZE,
-    .create_date = _VOLUME_CREATE_DATE,
-    .create_time = _VOLUME_CREATE_TIME,
-    .write_date = _VOLUME_CREATE_DATE,
-    .write_time = _VOLUME_CREATE_TIME,
-    .last_access_date = _VOLUME_CREATE_DATE,
-};
-
 // ---------------
 
 static void on_sector_read_FAT(uint32_t sector, uint8_t *buf, uint32_t entry_first, uint32_t entry_num)
@@ -272,8 +252,6 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
 
         // CURRENT.UF2
         on_sector_read_FAT(sector, buf, CURRENT_UF2_FAT_ENTRY_FIRST, FW_PAGE_NUM);
-        // DATA.UF2
-        on_sector_read_FAT(sector, buf, DATA_UF2_FAT_ENTRY_FIRST, PY25Q16_PAGE_NUM);
     }
     else if (sector < DATA_SECTOR)
     {
@@ -293,8 +271,6 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             memcpy(buf + FAT_DIR_ENTRY_SIZE * INDEX_HTM_ROOT_ENTRY, &INDEX_HTM_DIR_ENTRY, FAT_DIR_ENTRY_SIZE);
             // CURRENT.UF2
             memcpy(buf + FAT_DIR_ENTRY_SIZE * CURRENT_UF2_ROOT_ENTRY, &CURRENT_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
-            // DATA.UF2
-            memcpy(buf + FAT_DIR_ENTRY_SIZE * DATA_UF2_ROOT_ENTRY, &DATA_UF2_dir_entry, FAT_DIR_ENTRY_SIZE);
         }
     }
     else if (sector < SECTOR_NUM)
@@ -328,21 +304,6 @@ int usb_fs_sector_read(uint32_t sector, uint8_t *buf, uint32_t size)
             block->magic_start0 = UF2_MAGIC_START0;
             block->magic_start1 = UF2_MAGIC_START1;
             block->target_addr = fw_addr;
-            block->payload_size = FLASH_PAGE_SIZE;
-            block->block_no = sector - CURRENT_UF2_SECTOR;
-            block->num_blocks = FW_PAGE_NUM;
-            block->magic_end = UF2_MAGIC_END;
-        }
-        // DATA.UF2
-        else if (DATA_UF2_SECTOR <= sector && sector < DATA_UF2_SECTOR + PY25Q16_PAGE_NUM)
-        {
-            const uint32_t data_addr = FLASH_PAGE_SIZE * (sector - DATA_UF2_SECTOR);
-            uf2_block_t *block = (uf2_block_t *)buf;
-            py25q16_read_page(data_addr, block->data);
-
-            block->magic_start0 = UF2_MAGIC_START0;
-            block->magic_start1 = UF2_MAGIC_START1;
-            block->target_addr = data_addr;
             block->payload_size = FLASH_PAGE_SIZE;
             block->block_no = sector - CURRENT_UF2_SECTOR;
             block->num_blocks = FW_PAGE_NUM;

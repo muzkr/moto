@@ -1,7 +1,6 @@
 #include "usb_fs.h"
 #include "dfu.h"
 #include "internal_flash.h"
-#include "py25q16.h"
 #include "uf2.h"
 #include <string.h>
 #include "board.h"
@@ -9,9 +8,6 @@
 #include "log.h"
 
 #define PAGE_SIZE 256
-#define MAX_BLOCKS 1024 // Support 256 KB of payload data
-
-typedef void (*program_page_func_t)(uint32_t addr, const uint8_t *buf);
 
 enum
 {
@@ -22,14 +18,13 @@ enum
 
 static struct
 {
-    uint32_t base_addr;
-    uint32_t num_pages;
+    // uint32_t base_addr;
+    // uint32_t num_pages;
     uint32_t num_blocks;
-    program_page_func_t program_page_func;
     uint8_t in_progress;
 } program_state = {0};
 
-static uint8_t block_map[MAX_BLOCKS] = {0};
+static uint8_t block_map[FW_PAGE_NUM] = {0};
 
 static uint32_t check_block(const uf2_block_t *block)
 {
@@ -57,7 +52,7 @@ static uint32_t check_block(const uf2_block_t *block)
         return REJECT_BLOCK;
     }
 
-    if (block->num_blocks > MAX_BLOCKS)
+    if (block->num_blocks > FW_PAGE_NUM)
     {
         return REJECT_BLOCK;
     }
@@ -76,19 +71,9 @@ static bool accept_first_block(const uf2_block_t *block)
 
     if (FW_ADDR <= target_addr && target_addr < FW_ADDR + FW_SIZE)
     {
-        program_state.base_addr = FW_ADDR;
-        program_state.num_pages = FW_PAGE_NUM;
+        // program_state.base_addr = FW_ADDR;
+        // program_state.num_pages = FW_PAGE_NUM;
         program_state.num_blocks = block->num_blocks;
-        program_state.program_page_func = internal_flash_program_page;
-        return true;
-    }
-
-    if (PY25Q16_BASE_ADDR <= target_addr && target_addr < PY25Q16_BASE_ADDR + PY25Q16_SIZE)
-    {
-        program_state.base_addr = PY25Q16_BASE_ADDR;
-        program_state.num_pages = PY25Q16_PAGE_NUM;
-        program_state.num_blocks = block->num_blocks;
-        program_state.program_page_func = (program_page_func_t)py25q16_write_page;
         return true;
     }
 
@@ -97,8 +82,7 @@ static bool accept_first_block(const uf2_block_t *block)
 
 static inline bool accept_subsequent_block(const uf2_block_t *block)
 {
-    return program_state.base_addr <= block->target_addr //
-           && block->target_addr < (program_state.base_addr + program_state.num_pages * PAGE_SIZE);
+    return FW_ADDR <= block->target_addr && block->target_addr < (FW_ADDR + FW_SIZE);
 }
 
 static bool program_finished()
@@ -176,7 +160,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         }
 
         log("program: %d, %08x\n", block->block_no, block->target_addr);
-        program_state.program_page_func(block->target_addr, block->data);
+        internal_flash_program_page(block->target_addr, block->data);
         block_map[block->block_no] = true;
 
         if (program_finished())
@@ -184,10 +168,7 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
             log("program finished\n");
             board_backlight_on(BOARD_DEFAULT_BACKLIGHT_DELAY);
 
-            if (FW_ADDR == program_state.base_addr)
-            {
-                main_schedule_reset(500);
-            }
+            main_schedule_reset(500);
 
             program_state.in_progress = false;
         }

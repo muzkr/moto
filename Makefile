@@ -2,7 +2,7 @@
 PROJECT = moto
 
 ENABLE_LOGGING ?= 0
-VERSION_STRING ?= 1.2.3
+VERSION_STRING ?= 1.3.0
 
 
 TARGET = $(PROJECT)_$(VERSION_STRING)
@@ -33,7 +33,6 @@ src/dfu.c \
 src/dfu_write.c \
 src/internal_flash.c \
 src/fw_boot.c \
-src/py25q16.c \
 src/lcd.c \
 src/usbd_msc_impl.c \
 src/py32f071_it.c \

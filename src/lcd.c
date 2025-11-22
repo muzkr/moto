@@ -9,6 +9,9 @@
 #define SPIx SPI1
 #define SYSTEM_DelayMs LL_mDelay
 
+#define LCD_WIDTH 128
+#define LCD_HEIGHT 64
+
 static void SPI_Init()
 {
     LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SPI1);
@@ -180,11 +183,11 @@ static void DrawLine(uint8_t column, uint8_t line, const uint8_t *lineBuffer, ui
 static void ST7565_FillScreen(uint8_t value)
 {
     CS_Assert();
-    for (unsigned i = 0; i < 8; i++)
+    for (unsigned i = 0; i < LCD_HEIGHT; i++)
     {
         ST7565_SelectColumnAndLine(4, i);
         A0_Set();
-        for (uint32_t x = 0; x < 128; x++)
+        for (uint32_t x = 0; x < LCD_WIDTH; x++)
         {
             SPI_WriteByte(value);
         }
@@ -226,11 +229,15 @@ static const uint8_t M[] = {0xFC, 0xFC, 0x18, 0x70, 0x18, 0xFC, 0xFC, /*0x00,*/ 
 static const uint8_t O[] = {0xF8, 0xFC, 0x04, 0x04, 0x04, 0xFC, 0xF8, /*0x00,*/ 0x07, 0x0F, 0x08, 0x08, 0x08, 0x0F, 0x07};
 static const uint8_t T[] = {0x00, 0x04, 0x04, 0xFC, 0xFC, 0x04, 0x04, /*0x00,*/ 0x00, 0x00, 0x00, 0x0F, 0x0F, 0x00, 0x00};
 
+#define FONT_WIDTH 7
+
 static const uint8_t *LOGO[] = {M, O, T, O};
 
-#define TOP 3
-#define LEFT 42
-#define WIDTH 10
+#define LOGO_LEN (sizeof(LOGO) / sizeof(uint8_t *))
+
+#define LOGO_TOP 3
+#define LOGO_FONT_WIDTH 10
+#define LOGO_LEFT ((LCD_WIDTH - LOGO_LEN * LOGO_FONT_WIDTH) / 2)
 
 void lcd_init()
 {
@@ -250,12 +257,12 @@ void lcd_display_logo()
 
     for (uint32_t y = 0; y < 2; y++)
     {
-        uint32_t y1 = y + TOP;
-        uint32_t off = 7 * y;
+        uint32_t y1 = y + LOGO_TOP;
+        uint32_t off = FONT_WIDTH * y;
         for (uint32_t x = 0; x < 4; x++)
         {
-            uint32_t x1 = LEFT + x * WIDTH;
-            DrawLine(x1, y1, LOGO[x] + off, 7);
+            uint32_t x1 = LOGO_LEFT + x * LOGO_FONT_WIDTH;
+            DrawLine(x1, y1, LOGO[x] + off, FONT_WIDTH);
         }
     }
 
