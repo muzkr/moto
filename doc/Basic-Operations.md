@@ -23,6 +23,6 @@ The `uf2conv.py` Python script from the UF2 project (a copy is also stored in th
 
 During the flashing process, the backlight will flash rapidly (so you know it's really FLASHING). After flashing completes, the backlight flashing stops. If the newly flashed firmware can be booted, Moto will immediately boot it. (If the firmware does not boot, it indicates that the firmware is not valid.)
 
-Generally, updating the firmware takes just a blink of an eye — you'll unlikely have time to enjoy the flashing light show.
+Generally, updating the firmware takes just a few seconds.
 
 After powering on, if the device directly enters Moto's DFU mode (PTT not pressed), it indicates that no valid firmware is present.
