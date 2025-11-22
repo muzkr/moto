@@ -1,8 +1,6 @@
 
 Similar to the stock bootloader, holding down the PTT button while powering on will enter Moto's DFU mode. At this point, the screen and keypad backlight illuminate, and the Moto logo appears on the screen.
 
-Users accustomed to stock bootloaders might expect the flashlight to turn on, but that's not the case with Moto.
-
 ![](./images/moto_logo.png)
 
 Connect the radio to your computer via USB, and you will see a MOTO drive.
