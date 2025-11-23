@@ -10,7 +10,7 @@ Features:
 - Mounts the radio as a USB disk to provide a drag-and-drop user experience
 - Firmware backup and flashing
 - Drag-and-drop upgrading, or restoring stock bootloader (via [Ichi](https://github.com/muzkr/ichi))
-- Replaces stock firmware, compatible with all known firmware
+- Replaces stock bootloader, compatible with all known firmware
 - FAT file system
 - UF2 firmware format
 - :x: No support for serial commands
