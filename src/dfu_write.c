@@ -26,6 +26,8 @@ static struct
 
 static uint8_t block_map[FW_PAGE_NUM] = {0};
 
+static uint8_t page_buf[PAGE_SIZE];
+
 static uint32_t check_block(const uf2_block_t *block)
 {
     if (UF2_MAGIC_START0 != block->magic_start0 || UF2_MAGIC_START1 != block->magic_start1)
@@ -160,7 +162,16 @@ int usb_fs_sector_write(uint32_t sector, const uint8_t *buf, uint32_t size)
         }
 
         log("program: %d, %08x\n", block->block_no, block->target_addr);
-        internal_flash_program_page(block->target_addr, block->data);
+        if (block->payload_size < PAGE_SIZE)
+        {
+            memcpy(page_buf, block->data, block->payload_size);
+            memcpy(page_buf + block->payload_size, (void *)(block->target_addr + block->payload_size), PAGE_SIZE - block->payload_size);
+            internal_flash_program_page(block->target_addr, page_buf);
+        }
+        else
+        {
+            internal_flash_program_page(block->target_addr, block->data);
+        }
         block_map[block->block_no] = true;
 
         if (program_finished())
