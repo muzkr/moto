@@ -153,8 +153,8 @@ static BootMode_t GetBootMode()
 
 static void APP_SysTick_Init()
 {
-    SysTick_Config(SystemCoreClock / 1000);
     NVIC_SetPriority(SysTick_IRQn, 0);
+    SysTick_Config(SystemCoreClock / 1000);
     // NVIC_EnableIRQ(SysTick_IRQn);
 }
 
@@ -238,7 +238,7 @@ static void APP_SystemClockConfig()
 {
     /* Enable and initialize HSI */
     LL_RCC_HSI_Enable();
-    LL_RCC_HSI_SetCalibFreq(LL_RCC_HSICALIBRATION_24MHz);
+    LL_RCC_HSI_SetCalibFreq(LL_RCC_HSICALIBRATION_16MHz);
     while (LL_RCC_HSI_IsReady() != 1)
     {
     }
@@ -257,7 +257,7 @@ static void APP_SystemClockConfig()
     {
     }
     LL_RCC_PLL_SetMainSource(LL_RCC_PLLSOURCE_HSI);
-    LL_RCC_PLL_SetMulFactor(LL_RCC_PLLMUL_2);
+    LL_RCC_PLL_SetMulFactor(LL_RCC_PLLMUL_3);
     LL_RCC_PLL_Enable();
     while (LL_RCC_PLL_IsReady() != 1)
     {
@@ -284,6 +284,8 @@ static void APP_SystemClockConfig()
 
     /* Update system clock global variable SystemCoreClock (can also be updated by calling SystemCoreClockUpdate function) */
     LL_SetSystemCoreClock(48000000);
+
+    LL_FLASH_TIMMING_SEQUENCE_CONFIG_16M();
 }
 
 /**
