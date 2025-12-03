@@ -98,8 +98,10 @@ int main()
 #endif
 
     BootMode_t boot_mode = GetBootMode();
-    if (BOOT_FW == boot_mode)
+    if (BOOT_FW == boot_mode && fw_is_bootable())
     {
+        NVIC_DisableIRQ(SysTick_IRQn);
+        SysTick->CTRL = 0; // Disable
         fw_boot();
     }
 
